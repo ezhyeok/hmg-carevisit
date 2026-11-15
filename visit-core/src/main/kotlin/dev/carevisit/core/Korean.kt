@@ -41,7 +41,7 @@ object Korean {
 }
 object Dates {
     fun parse(text: String, today: LocalDate): Appointment {
-        val t = Korean.compact(text)
+        val t = text.filterNot { it.isWhitespace() }
         var date: LocalDate? = null
         var time: LocalTime? = null
         var ambiguous = false
@@ -71,11 +71,17 @@ object Dates {
                 t.startsWith("내일") -> today.plusDays(1)
                 else -> null
             }
-            val tm = Regex("(오전|오후)(\\d{1,2})시(?:(\\d{1,2})분)?").find(t)
+            val dateCandidates = Regex("(?:(\\d{4})년)?(\\d{1,2})월(\\d{1,2})일|다음달\\d{1,2}일|\\d+(?:일|주|달|개월)(?:뒤|후)|(?:이틀|사흘|일주일|한달)(?:뒤|후)|내일|다음주[월화수목금토일]요일").findAll(t).count()
+            if(dateCandidates>1 || Regex("\\d{1,2}일").findAll(t).count()>1 || listOf("아니","또는","혹은").any { it in t }) ambiguous=true
+            val tm = Regex("(오전|오후)(\\d{1,2})시(?:(\\d{1,2})분)?(반)?").find(t)
+            val multipleTimes=Regex("\\d{1,2}시").findAll(t).count()>1 || Regex("오전|오후").findAll(t).count()>1
             if (tm != null) {
                 val hour = tm.groupValues[2].toInt()
                 require(hour in 1..12)
-                time = LocalTime.of(hour % 12 + if(tm.groupValues[1] == "오후") 12 else 0, tm.groupValues[3].toIntOrNull() ?: 0)
+                val half=tm.groupValues[4].isNotEmpty()
+                val minutes=Regex("\\d{1,2}분").findAll(t).count()
+                if(multipleTimes || minutes>1 || half && minutes>0) ambiguous=true
+                else time = LocalTime.of(hour % 12 + if(tm.groupValues[1] == "오후") 12 else 0, if(half) 30 else tm.groupValues[3].toIntOrNull() ?: 0)
             } else if ("시" in t) ambiguous = true
             if (date != null && date < today) ambiguous = true
             val spokenWeekday=weekdayNames.indexOfFirst { it in t }
@@ -89,9 +95,9 @@ object Dates {
         return d.format(DateTimeFormatter.ofPattern("M월 d일(E)", Locale.KOREAN)) + (a.time?.let { " " + LocalTime.parse(it).format(DateTimeFormatter.ofPattern("a h시 mm분", Locale.KOREAN)) } ?: " (시간 확인 필요)")
     }
 }
-/** Conservative allowlist: polish may only alter whitespace/punctuation. This also rules out
+/** Conservative allowlist: polish may only alter whitespace. This also rules out
  * diagnosis, removed negations, novel drug names and reordered doses that token checks alone miss. */
 object PolishGuard {
     private fun lexical(s: String) = Regex("[\\p{L}\\p{N}]+").findAll(s).map { it.value }.toList()
-    fun accept(source: String, output: String): Boolean = output.isNotBlank() && output.length <= source.length * 1.5 && lexical(source) == lexical(output) && Korean.bodyWords(output).all { it in Korean.bodyWords(source) }
+    fun accept(source: String, output: String): Boolean = output.isNotBlank() && output.length <= source.length * 1.5 && source.filterNot { it.isWhitespace() } == output.filterNot { it.isWhitespace() } && lexical(source) == lexical(output) && Korean.bodyWords(output).all { it in Korean.bodyWords(source) }
 }

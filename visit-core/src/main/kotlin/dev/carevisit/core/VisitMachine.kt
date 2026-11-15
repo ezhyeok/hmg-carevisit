@@ -12,6 +12,10 @@ sealed interface Event {
     data class Vehicle(val gear: Gear, val speedMps: Double?, val restricted: Boolean, val passengerOpen: Boolean) : Event
     data class Answer(val id: Long,val text: String?,val touch: Boolean=false) : Event
     data object Arrived : Event
+    data class NavigationArrived(val name: String,val address: String) : Event
+    data object NavigationCleared : Event
+    data object ConfirmDestination : Event
+    data object DismissDestination : Event
     data object ParkingMode : Event
     data object ShareMemo : Event
     data object ShareBriefing : Event
@@ -57,6 +61,8 @@ class VisitMachine(initial: Archive = Archive(), private val createdAt: Long) {
     private var restricted = true
     private var open = false
     private var arrivalSignal = false
+    private var arrivalElapsed: Long? = null
+    private var navigationDestination: Hospital? = null
     private var recovered: Session? = null
     private val replyIds = mutableSetOf<String>()
     private val reminded = mutableSetOf<String>()
@@ -69,12 +75,13 @@ class VisitMachine(initial: Archive = Archive(), private val createdAt: Long) {
     private val family get() = health && archive.consent.familyAt != null
     private val parked get() = gear == Gear.P && !restricted
     private fun session(s: Session) { archive = archive.copy(session=s) }
-    private fun ask(kind: AskKind,text: String,slot: Slot?=null,retry: Int=0) {
-        val p=Prompt(sequence++,kind,text,slot,retry); session(session.copy(prompt=p)); effects += Effect.Ask(p)
+    private fun ask(kind: AskKind,text: String,slot: Slot?=null,retry: Int=0,confirming: Boolean=false,correction: Boolean=false) {
+        val p=Prompt(sequence++,kind,text,slot,retry,confirming,correction); session(session.copy(prompt=p)); effects += Effect.Ask(p)
     }
     private fun cancelPrompt() { effects += Effect.StopVoice; session(session.copy(prompt=null)) }
     fun handle(e: Event,now: Long,elapsed: Long): List<Effect> {
         effects.clear()
+        if(arrivalElapsed?.let { elapsed-it !in 0..Policy.ARRIVAL_CANDIDATE_MS }==true) clearArrival()
         val delta=lastElapsed?.let { (elapsed-it).coerceIn(0,60_000) } ?: 0L
         // Tick cadence is normally 1s; cap a service scheduling gap at one minute.
         if((e is Event.Tick || e is Event.Vehicle) && gear==Gear.D && speed?.let { it.isFinite() && it>0.5 }==true) movingMs += delta
@@ -86,26 +93,39 @@ class VisitMachine(initial: Archive = Archive(), private val createdAt: Long) {
                 if(session.visit != null && session.phase !in setOf(Phase.DONE,Phase.IDLE)) { recovered=session.copy(phase=session.resumePhase ?: session.phase); session(session.copy(phase=Phase.RECOVERY,resumePhase=recovered!!.phase)); notice="중단된 진료 기록이 있어요. 주차 후 이어가거나 폐기하세요." }
             }
             is Event.Manual -> start(e.hospital,now)
-            is Event.Destination -> if(TripRules.isHospital(e.hospital.name,archive.settings.hospitals)) {
-                if(session.visit?.hospital?.name=="병원") updateVisit(session.visit!!.copy(hospital=e.hospital))
-                else start(e.hospital,now)
-            }
+            is Event.Destination -> destination(e.hospital,now)
             is Event.Vehicle -> {
                 val previous=gear; gear=e.gear; speed=e.speedMps; restricted=e.restricted; open=e.passengerOpen
                 arrive(now)
                 if(health && session.phase==Phase.AT_HOSPITAL && previous==Gear.P && gear==Gear.D && session.arrivedAt?.let { now-it>=Policy.STAY_MS }==true) {
-                    session(session.copy(phase=Phase.OFFER_POST)); ask(AskKind.POST_OFFER,"진료 어떠셨어요? 의사 선생님 말씀 정리해 둘까요?")
+                    movingMs=0; clearArrival()
+                    session(session.copy(phase=Phase.WAIT_SAFE,returnPending=true,offered=false))
+                    notice="오는 길 · 누적 주행 60초 뒤 여쭤볼게요"
                 }
             }
             Event.Tick -> {
                 archive=Policy.purge(archive,now)
-                if(session.phase==Phase.WAIT_SAFE && movingMs>=Policy.SAFE_DRIVE_MS && !session.offered) offer()
+                if(session.phase==Phase.WAIT_SAFE && movingMs>=Policy.SAFE_DRIVE_MS && !session.offered && gear==Gear.D && speed?.let { it.isFinite() && it>0.5 }==true) offer()
                 if(session.phase in setOf(Phase.IDLE,Phase.DONE) && session.prompt==null && health) remind(now)
             }
             Event.PrepareParked -> if(parked && session.phase==Phase.WAIT_SAFE) offer()
             Event.RequestConsent -> if(parked && !health) { session(session.copy(phase=Phase.HEALTH_CONSENT)); ask(AskKind.HEALTH,Policy.healthLine(archive.settings.retentionDays)) }
             is Event.Answer -> if(!e.touch || touchAllowed(e)) answer(e,now)
             Event.Arrived -> { arrivalSignal=true; arrive(now) }
+            is Event.NavigationArrived -> {
+                val target=navigationDestination
+                val visit=session.visit
+                if(target!=null && visit!=null && sameHospital(visit.hospital,target) &&
+                    sameHospital(target,Hospital(e.name,address=e.address))) {
+                    arrivalSignal=true;arrivalElapsed=elapsed;arrive(now)
+                }
+            }
+            Event.NavigationCleared -> { navigationDestination=null;clearArrival();session(session.copy(pendingHospital=null)) }
+            Event.ConfirmDestination -> if(parked) session.pendingHospital?.takeIf { it==navigationDestination }?.let { target ->
+                if(health) session.visit?.let { old -> archive=archive.copy(visits=archive.visits.filterNot { it.id==old.id }+old) }
+                cancelPrompt();session(Session());start(target,now)
+            }
+            Event.DismissDestination -> if(parked) session(session.copy(pendingHospital=null))
             Event.ParkingMode -> if(parked && health && session.phase==Phase.AT_HOSPITAL) {
                 session(session.copy(parkingMode=true,rendezvous=Rendezvous.PARKING)); notice="정문에서 내려 드리고 주차 후 합류"
                 if(family) effects += Effect.Send(ApprovedMessage(UUID.randomUUID().toString(),"status","주차 중"))
@@ -128,11 +148,11 @@ class VisitMachine(initial: Archive = Archive(), private val createdAt: Long) {
             }
             Event.DeleteAll,Event.Withdraw -> {
                 effects += Effect.StopVoice; effects += Effect.RevokeFamily
-                archive=Archive(); recovered=null; arrivalSignal=false; movingMs=0; notice="이 기기의 진료 기록과 동의를 모두 삭제했어요."
+                archive=Archive(); recovered=null;clearArrival();navigationDestination=null;movingMs=0; notice="이 기기의 진료 기록과 동의를 모두 삭제했어요."
             }
-            Event.Resume -> if(parked && health) recovered?.let { s -> session(s.copy(prompt=null,resumePhase=null)); recovered=null; s.prompt?.let { ask(it.kind,it.text,it.slot) }; if(s.phase==Phase.BRIEFING) finishPost() }
+            Event.Resume -> if(parked && health) recovered?.let { s -> session(s.copy(prompt=null,resumePhase=null)); recovered=null; s.prompt?.let { ask(it.kind,it.text,it.slot,it.retry,it.confirming,it.correction) }; if(s.phase==Phase.BRIEFING) finishPost() }
             Event.Abandon -> if(parked) { cancelPrompt(); session(Session()); recovered=null; arrivalSignal=false; notice="중단된 기록을 폐기했어요." }
-            Event.RetryVoice -> session.prompt?.let { effects+=Effect.StopVoice; ask(it.kind,it.text,it.slot,it.retry) }
+            Event.RetryVoice -> session.prompt?.let { effects+=Effect.StopVoice; ask(it.kind,it.text,it.slot,it.retry,it.confirming,it.correction) }
             is Event.Checked -> if(parked && health) session.visit?.let { v -> if(v.slots[Slot.QUESTION].orEmpty().any { it.utteranceId==e.utteranceId }) { val checked=v.checkedQuestions.toMutableSet(); if(!checked.add(e.utteranceId)) checked.remove(e.utteranceId); updateVisit(v.copy(checkedQuestions=checked)) } }
             is Event.Polished -> if(health && session.phase==Phase.BRIEFING && session.visit?.id==e.visitId && session.briefing==e.source) {
                 session(session.copy(briefing=e.text?.takeIf { PolishGuard.accept(e.source,it) } ?: e.source)); readback()
@@ -153,11 +173,39 @@ class VisitMachine(initial: Archive = Archive(), private val createdAt: Long) {
     }
     private fun start(h: Hospital,now: Long) {
         if(session.phase !in setOf(Phase.IDLE,Phase.DONE)) return
-        movingMs=0; arrivalSignal=false
+        movingMs=0;clearArrival()
         session(Session(phase=Phase.WAIT_SAFE,visit=Visit(UUID.randomUUID().toString(),h,now)))
         notice="병원 가는 길 · 주행 1분 후 여쭤볼게요"
     }
+    private fun clearArrival() { arrivalSignal=false;arrivalElapsed=null }
+    private fun sameHospital(expected: Hospital,actual: Hospital): Boolean {
+        fun key(s: String)=s.filterNot { it.isWhitespace() }
+        return key(expected.name).isNotEmpty() && key(expected.name)==key(actual.name) &&
+            (expected.address.isBlank() || key(expected.address)==key(actual.address))
+    }
+    private fun destination(target: Hospital,now: Long) {
+        val changed=navigationDestination!=target
+        if(changed) {clearArrival();session(session.copy(pendingHospital=null))}
+        navigationDestination=target
+        if(!TripRules.isHospital(target.name,archive.settings.hospitals)) return
+        val current=session.visit
+        when {
+            session.phase in setOf(Phase.IDLE,Phase.DONE) -> start(target,now)
+            current?.hospital?.name=="병원" -> updateVisit(current.copy(hospital=target))
+            current!=null && sameHospital(current.hospital,target) -> {
+                if(current.hospital.address.isBlank() && target.address.isNotBlank()) updateVisit(current.copy(hospital=target))
+            }
+            changed && current!=null -> {
+                session(session.copy(pendingHospital=target));notice="목적지가 바뀌었어요. 주차 후 방문 병원을 확인해 주세요."
+            }
+        }
+    }
     private fun offer() {
+        if(session.returnPending) {
+            session(session.copy(offered=true,returnPending=false,phase=Phase.OFFER_POST))
+            ask(AskKind.POST_OFFER,"진료 어떠셨어요? 의사 선생님 말씀 정리해 둘까요?")
+            return
+        }
         session(session.copy(offered=true,phase=if(health) Phase.OFFER_PRE else Phase.HEALTH_CONSENT))
         if(!health) ask(AskKind.HEALTH,Policy.healthLine(archive.settings.retentionDays)) else ask(AskKind.PRE_OFFER,"${archive.settings.honorific} 진료 가시는 길이죠? 의사 선생님께 드릴 말씀을 차에서 정리해 둘까요?")
     }
@@ -176,13 +224,14 @@ class VisitMachine(initial: Archive = Archive(), private val createdAt: Long) {
         val intent=Korean.intent(text)
         if(Korean.safety(text.orEmpty())==Safety.EMERGENCY) { cancelPrompt(); recovered=session.copy(prompt=p); session(recovered!!.copy(phase=Phase.RECOVERY,resumePhase=recovered!!.phase)); effects+=Effect.Say(Policy.EMERGENCY_LINE); return }
         if(intent==Intent.STOP) { cancelPrompt(); notice="대화를 멈췄어요. 주차 후 이어갈 수 있어요."; recovered=session.copy(prompt=p); session(recovered!!.copy(phase=Phase.RECOVERY,resumePhase=recovered!!.phase)); return }
+        if(p.confirming) { confirmRecorded(p,text,intent); return }
         val valid=when(p.kind) {
             AskKind.SLOT -> text!=null && (intent != Intent.MORE)
             AskKind.MORE_QUESTIONS -> intent in setOf(Intent.MORE,Intent.YES,Intent.NO,Intent.SKIP)
             else -> intent in setOf(Intent.YES,Intent.NO,Intent.SKIP)
         }
         if(!valid) {
-            if(p.retry==0) ask(p.kind,"잘 듣지 못했어요. ${p.text}",p.slot,1)
+            if(p.retry==0) ask(p.kind,"잘 듣지 못했어요. ${p.text}",p.slot,1,p.confirming,p.correction)
             else { cancelPrompt(); if(p.kind==AskKind.SLOT) nextSlot() else decline(p.kind) }
             return
         }
@@ -202,14 +251,16 @@ class VisitMachine(initial: Archive = Archive(), private val createdAt: Long) {
             } else decline(p.kind)
             AskKind.POST_OFFER -> if(intent==Intent.YES) { session(session.copy(phase=Phase.POST,slotIndex=0)); askSlot() } else decline(p.kind)
             AskKind.SLOT -> {
-                if(intent !in setOf(Intent.SKIP,Intent.NO)) record(p.slot!!,text!!,now)
+                val recorded=intent !in setOf(Intent.SKIP,Intent.NO)
+                if(recorded) record(p.slot!!,text!!,now,p.correction)
                 if(Korean.safety(text.orEmpty())==Safety.DISCOMFORT) effects+=Effect.Say(Policy.DISCOMFORT_LINE)
-                if(p.slot==Slot.CONTINUITY) askSlot()
+                if(recorded && p.slot in checkedSlots) readbackSlot(p.slot!!,p.correction)
+                else if(p.slot==Slot.CONTINUITY) askSlot()
                 else if(p.slot==Slot.QUESTION && intent !in setOf(Intent.SKIP,Intent.NO) && session.visit!!.slots[Slot.QUESTION].orEmpty().size<5) ask(AskKind.MORE_QUESTIONS,"또 물어볼 것이 있나요? 있으면 또 있어, 없으면 없다고 말씀해 주세요.")
                 else nextSlot()
             }
             AskKind.MORE_QUESTIONS -> if(intent in setOf(Intent.MORE,Intent.YES)) ask(AskKind.SLOT,"또 물어볼 것을 말씀해 주세요.",Slot.QUESTION) else nextSlot()
-            AskKind.MED_CHANGED -> if(intent==Intent.YES) ask(AskKind.SLOT,Templates.questions.getValue(Slot.MED_CHANGE),Slot.MED_CHANGE) else { if(text!=null && intent==Intent.NO) record(Slot.MED_CHANGE,text,now); nextSlot() }
+            AskKind.MED_CHANGED -> if(intent==Intent.YES) ask(AskKind.SLOT,Templates.questions.getValue(Slot.MED_CHANGE),Slot.MED_CHANGE) else { if(text!=null && intent==Intent.NO) { record(Slot.MED_CHANGE,text,now); readbackSlot(Slot.MED_CHANGE,false) } else nextSlot() }
             AskKind.SHARE_MEMO -> if(intent==Intent.YES && family) effects+=Effect.Send(ApprovedMessage(UUID.randomUUID().toString(),"memo",Templates.memo(session.visit!!)))
             AskKind.SHARE_BRIEFING -> { if(intent==Intent.YES && family) effects+=Effect.Send(ApprovedMessage(UUID.randomUUID().toString(),"briefing",session.briefing)); offerReminder() }
             AskKind.REMINDER -> { if(intent==Intent.YES) updateVisit(session.visit!!.copy(reminder=true)); session(session.copy(phase=Phase.DONE)) }
@@ -238,12 +289,39 @@ class VisitMachine(initial: Archive = Archive(), private val createdAt: Long) {
         else if(session.phase==Phase.PRE) { session(session.copy(phase=Phase.MEMO)); notice="진료 메모가 준비됐어요. 주차 후 확인하세요."; effects+=Effect.Say(notice) }
         else finishPost()
     }
-    private fun record(s: Slot,text: String,now: Long) {
+    private val checkedSlots=setOf(Slot.MEDICATION,Slot.MED_CHANGE,Slot.APPOINTMENT)
+    private fun readbackSlot(slot: Slot,correction: Boolean) {
+        val text=session.visit?.text(slot).orEmpty()
+        ask(AskKind.SLOT,"‘$text’라고 기록했어요. 맞으면 맞아요, 고치려면 다시 말할게요, 잘 모르시면 확인 필요라고 말씀해 주세요.",slot,confirming=true,correction=correction)
+    }
+    private fun confirmRecorded(p: Prompt,text: String?,intent: Intent) {
+        val compact=Korean.compact(text.orEmpty())
+        val correct=compact in setOf("다시말할게요","다시말할게","다시말할","다시말","다시","고칠게요") || intent==Intent.NO
+        val yes=intent==Intent.YES || compact in setOf("맞아요","맞아","맞습니다","맞아여")
+        val skip=intent==Intent.SKIP || compact in setOf("확인필요","확인이필요해","확인필요해요")
+        if(!yes && !correct && !skip && p.retry==0) {
+            ask(p.kind,"잘 듣지 못했어요. ${p.text}",p.slot,1,true,p.correction);return
+        }
+        cancelPrompt()
+        if(correct && !p.correction) {
+            ask(AskKind.SLOT,Templates.questions.getValue(p.slot!!),p.slot,correction=true);return
+        }
+        if(yes) session.visit?.let { v ->
+            val slot=p.slot!!
+            val appointment=if(slot==Slot.APPOINTMENT) v.appointment?.let { a ->
+                val at=v.utterances.first { it.id==a.utteranceId }.at
+                Dates.parse(a.verbatim,Instant.ofEpochMilli(at).atZone(ZoneId.of("Asia/Seoul")).toLocalDate()).copy(utteranceId=a.utteranceId)
+            } else v.appointment
+            updateVisit(v.copy(slots=v.slots+(slot to v.slots[slot].orEmpty().map { it.copy(needsConfirmation=false) }),appointment=appointment))
+        }
+        nextSlot()
+    }
+    private fun record(s: Slot,text: String,now: Long,replace: Boolean=false) {
         val v=session.visit ?: return
         val u=Utterance(UUID.randomUUID().toString(),text,now)
-        val value=SlotValue(u.id,text,if(s==Slot.DURATION) Korean.duration(text) else null)
-        val appointment=if(s==Slot.APPOINTMENT) Dates.parse(text,Instant.ofEpochMilli(now).atZone(ZoneId.of("Asia/Seoul")).toLocalDate()).copy(utteranceId=u.id) else v.appointment
-        updateVisit(v.copy(utterances=v.utterances+u,slots=v.slots+(s to (v.slots[s].orEmpty()+value)),appointment=appointment))
+        val value=SlotValue(u.id,text,if(s==Slot.DURATION) Korean.duration(text) else null,s in checkedSlots)
+        val appointment=if(s==Slot.APPOINTMENT) Dates.parse(text,Instant.ofEpochMilli(now).atZone(ZoneId.of("Asia/Seoul")).toLocalDate()).copy(utteranceId=u.id,needsConfirmation=true) else v.appointment
+        updateVisit(v.copy(utterances=v.utterances+u,slots=v.slots+(s to (if(replace) listOf(value) else v.slots[s].orEmpty()+value)),appointment=appointment))
     }
     private fun updateVisit(v: Visit) {
         check(v.traceable())
@@ -261,12 +339,12 @@ class VisitMachine(initial: Archive = Archive(), private val createdAt: Long) {
     }
     private fun offerReminder() {
         val a=session.visit?.appointment
-        if(a?.date!=null && !a.needsConfirmation && session.visit?.reminder!=true) { session(session.copy(phase=Phase.REMINDER)); ask(AskKind.REMINDER,"다음 진료일에 차를 켜면 알려 드릴까요?") }
+        if(a?.date!=null && !a.needsConfirmation && session.visit?.reminder!=true) { session(session.copy(phase=Phase.REMINDER)); ask(AskKind.REMINDER,"다음 진료일에 앱이 켜져 있을 때 알려 드릴까요?") }
         else session(session.copy(phase=Phase.DONE))
     }
     private fun arrive(now: Long) {
-        if(!health || !arrivalSignal || gear!=Gear.P || session.visit==null) return
-        if(session.phase in setOf(Phase.MEMO,Phase.PRE,Phase.OFFER_PRE,Phase.WAIT_SAFE)) {
+        if(!health || gear!=Gear.P || session.visit==null) return
+        if(arrivalSignal && !session.returnPending && session.phase in setOf(Phase.MEMO,Phase.PRE,Phase.OFFER_PRE,Phase.WAIT_SAFE)) {
             cancelPrompt(); session(session.copy(phase=Phase.AT_HOSPITAL,arrivedAt=now,rendezvous=Rendezvous.AT_GATE)); notice="정문 도착"
             if(family) effects+=Effect.Send(ApprovedMessage(UUID.randomUUID().toString(),"status","정문 도착"))
         }

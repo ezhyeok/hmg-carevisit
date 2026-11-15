@@ -5,11 +5,16 @@ import kotlin.test.*
 class FlowTest {
     private val now=Instant.parse("2026-11-15T01:00:00Z").toEpochMilli()
     private fun parked(m:VisitMachine,t:Long=0) {m.handle(Event.Vehicle(Gear.P,0.0,false,false),now+t,t)}
-    private fun answer(m:VisitMachine,text:String?,t:Long=0)=m.handle(Event.Answer(m.archive.session.prompt!!.id,text),now+t,t)
+    private fun answer(m:VisitMachine,text:String?,t:Long=0): List<Effect> {
+        val effects=m.handle(Event.Answer(m.archive.session.prompt!!.id,text),now+t,t)
+        return if(m.archive.session.prompt?.confirming==true) effects+m.handle(Event.Answer(m.archive.session.prompt!!.id,"맞아요"),now+t,t) else effects
+    }
     private fun ready(family:Boolean=false):VisitMachine {
         val m=VisitMachine(Archive(consent=Consent(now,if(family)now else null)),now)
         parked(m);m.handle(Event.Manual(Hospital("○○병원",37.4,127.1)),now,0);m.handle(Event.PrepareParked,now,0);answer(m,"네");repeat(5){answer(m,"넘어가")}
-        m.handle(Event.Arrived,now,0);m.handle(Event.Vehicle(Gear.D,10.0,true,false),now+900_000,900_000);answer(m,"네",900_000)
+        m.handle(Event.Arrived,now,0);m.handle(Event.Vehicle(Gear.D,10.0,true,false),now+840_000,840_000)
+        parked(m,900_000);m.handle(Event.Vehicle(Gear.D,10.0,true,false),now+900_000,900_000)
+        m.handle(Event.Tick,now+960_000,960_000);answer(m,"네",960_000)
         return m
     }
     private fun finish(m:VisitMachine):List<Effect> {
@@ -52,7 +57,7 @@ class FlowTest {
 
     @Test fun decliningReturnInterviewStillPreservesThePreparedMemo() {
         val m=VisitMachine(Archive(consent=Consent(now)),now);parked(m);m.handle(Event.Manual(Hospital("○○병원")),now,0);m.handle(Event.PrepareParked,now,0);answer(m,"네");answer(m,"무릎이 아프");repeat(4){answer(m,"넘어가")}
-        m.handle(Event.Arrived,now,0);m.handle(Event.Vehicle(Gear.D,10.0,true,false),now+900_000,900_000);answer(m,"아니요",900_000)
+        m.handle(Event.Arrived,now,0);m.handle(Event.Vehicle(Gear.D,10.0,true,false),now+900_000,900_000);m.handle(Event.Tick,now+960_000,960_000);answer(m,"아니요",960_000)
         m.handle(Event.Manual(Hospital("다음 병원")),now+1_000_000,1_000_000)
         assertEquals("무릎이 아프",m.archive.visits.single().text(Slot.SYMPTOM))
         assertTrue(m.archive.visits.single().traceable())

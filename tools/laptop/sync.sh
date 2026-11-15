@@ -19,7 +19,7 @@ TMP="$(mktemp -d)"
 trap 'rm -rf "$TMP"' EXIT
 TAR="sync-$DEST.tar"
 STAGE="sync-stage-$DEST"
-tar -C "$ROOT" --exclude=.git --exclude=.local --exclude=.agents --exclude=.codex --exclude=./docs --exclude='*/build' --exclude='*/.gradle' --exclude=local.properties --exclude=keystore.properties --exclude='*.jks' --exclude='*.keystore' --exclude='*/.kotlin' --exclude='*/__pycache__' --exclude='./*.md' --exclude='./*.docx' -cf "$TMP/$TAR" .
+tar -C "$ROOT" --exclude=.git --exclude=.local --exclude=.agents --exclude=.codex --exclude=./docs --exclude=./apk --exclude=./build --exclude='*/build' --exclude='*/.gradle' --exclude=local.properties --exclude=keystore.properties --exclude='*.jks' --exclude='*.keystore' --exclude='*/.kotlin' --exclude='*/__pycache__' --exclude='./*.md' --exclude='./*.docx' -cf "$TMP/$TAR" .
 scp -q "$TMP/$TAR" "hmg-laptop:hmg-appdev-challenge/$TAR"
 rm -rf "$TMP"
 ssh hmg-laptop "\$ErrorActionPreference = 'Stop'; Set-Location \$env:USERPROFILE\\hmg-appdev-challenge; if (Test-Path $STAGE) { Remove-Item -Recurse -Force $STAGE }; New-Item -ItemType Directory -Force $STAGE, $DEST | Out-Null; tar -xf $TAR -C $STAGE; if (\$LASTEXITCODE -ne 0) { throw 'tar extraction failed; destination was not mirrored' }; Remove-Item $TAR; robocopy $STAGE $DEST /MIR /XD build .gradle .kotlin .git .agents .codex .local docs /XF local.properties keystore.properties *.jks *.keystore /NFL /NDL /NJH /NJS /NP | Out-Null; \$rc = \$LASTEXITCODE; Remove-Item -Recurse -Force $STAGE; if (\$rc -ge 8) { 'robocopy failed: ' + \$rc; exit 1 }; 'synced to $DEST (mirrored)'"

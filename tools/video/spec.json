@@ -1,22 +1,131 @@
-{"segments": [
- {"type": "title", "lines": ["진료동행 — 병원 가는 길엔 준비, 오는 길엔 기억", "부모님을 모시고 병원에 가는 차 안에서, 차가 정해진 순서로 묻고 진료 메모와 브리핑을 만든다", "Pleos Connect Emulator 2.1.0 + Virtual Console 화면 녹화 · 소리 없음 · 시연 모드(지어낸 기록)"], "dur": 5},
- {"type": "clip", "file": "build/video/clips/vr1.mp4", "start": 0, "end": 10, "speed": 1,
-  "caption": "처음 한 번: 건강 정보는 따로 동의를 받는다", "sub": "무엇을, 어디에(이 기기 안), 얼마 동안(180일) 보관하는지 먼저 알린다. 언제든 모두 지울 수 있다"},
- {"type": "clip", "file": "build/video/clips/vr1.mp4", "start": 10, "end": 72, "speed": 8, "badge": "8배속",
-  "caption": "병원 가는 길 · ○○대학교병원으로 출발 (기어 D, 시속 40km)", "sub": "내비 목적지가 병원이면 진료 동행으로 보고, 1분쯤 달려 운전이 안정된 뒤 묻는다"},
- {"type": "clip", "file": "build/video/clips/vr1.mp4", "start": 72, "end": 120, "speed": 2, "badge": "2배속",
-  "caption": "차가 정해진 순서로 묻는다: 어디가, 언제부터, 어떨 때, 약, 물어볼 것", "sub": "주행 중 화면은 지금 질문 하나와 예·아니요·넘어가기뿐. 대답은 말 그대로 칸에 남는다 (시연은 미리 정한 대답, 음성은 녹화되지 않음)"},
- {"type": "clip", "file": "build/video/clips/vr1.mp4", "start": 120, "end": 127, "speed": 1,
-  "caption": "달리는 동안에는 메모를 펼치지 않는다", "sub": "주행 제한(CarUxRestrictions)이 켜져 있으면 짧은 안내만. 차가 서면 메모를 보여 준다"},
- {"type": "clip", "file": "build/video/clips/vr2.mp4", "start": 6, "end": 30, "speed": 1.5, "badge": "1.5배속",
-  "caption": "정문 하차 · 기어 P에서 동승석 문이 열리면 ‘정문에서 다시 만나요’", "sub": "주차 화면의 진료 메모를 진료실에서 의사에게 그대로 보여 준다. 앱은 의학적 판단을 하지 않는다"},
- {"type": "clip", "file": "build/video/clips/vr2.mp4", "start": 30, "end": 44, "speed": 1.5, "badge": "1.5배속",
-  "caption": "가족 공유는 따로 동의한다 (시연용 가족 연결, 외부 전송 없음)", "sub": "위치와 대화 원문은 보내지 않는다. 보낼 때마다 한 번 더 확인한다"},
- {"type": "clip", "file": "build/video/clips/vr2.mp4", "start": 44, "end": 106, "speed": 2, "badge": "2배속",
-  "caption": "오는 길 · 의사 선생님 말씀을 같은 방식으로 기록한다", "sub": "의사 말씀, 약 변경, 검사·다음 예약(‘2주 뒤 오전 10시’ → 11월 29일), 주의, 다음에 확인할 것. 읽어 준 뒤 ‘가족에게 보낼까요?’"},
- {"type": "clip", "file": "build/video/clips/vr2.mp4", "start": 106, "end": 138, "speed": 4, "badge": "4배속",
-  "caption": "기록 완료 · 운전 중에는 한 줄만", "sub": "‘진료 기록 완료 · 주차 후 확인하세요’"},
- {"type": "clip", "file": "build/video/clips/vr2.mp4", "start": 138, "end": 150, "speed": 1,
-  "caption": "주차하면 오늘의 기록: 브리핑, 다음 예약, 가족의 답장(‘잘 받았어’)", "sub": "다음 진료 때는 지난번 ‘다음에 확인할 것’을 먼저 묻는다"},
- {"type": "title", "lines": ["진료동행", "판단하지 않고, 들은 말을 정리한다 · 기기 안에 저장 · 공유는 동의한 것만", "Pleos NaviHelper · Vehicle(기어·도어) · TTS/STT · AAOS CarUxRestrictions"], "dur": 4}
-]}
+{
+ "segments": [
+  {
+   "type": "title",
+   "lines": [
+    "진료동행 — 병원 가는 길엔 준비, 오는 길엔 기억",
+    "REAL: TTS SDK · VC 기어/도어 · 주행 제한",
+    "MOCK: STT 대답 · 목적지/도착 · 시간 이동 · 가족 답장",
+    "에뮬레이터 화면 녹화 · 소리 없음 · 지어낸 기록"
+   ],
+   "dur": 5
+  },
+  {
+   "type": "clip",
+   "file": "build/video/clips/n_vr1.mp4",
+   "start": 0,
+   "end": 10,
+   "speed": 1,
+   "caption": "처음 한 번: 건강 정보는 따로 동의를 받는다",
+   "sub": "무엇을, 어디에(이 기기 안), 얼마 동안(180일) 보관하는지 먼저 알린다. 언제든 모두 지울 수 있다"
+  },
+  {
+   "type": "clip",
+   "file": "build/video/clips/n_vr1.mp4",
+   "start": 10,
+   "end": 72,
+   "speed": 8,
+   "caption": "병원 가는 길 · ○○대학교병원으로 출발 (기어 D, 시속 40km)",
+   "sub": "목적지·도착은 모의 입력. 누적 주행 60초 뒤 질문한다. 도로 안전 상태를 판정한 값은 아니다",
+   "badge": "8배속"
+  },
+  {
+   "type": "clip",
+   "file": "build/video/clips/n_vr1.mp4",
+   "start": 72,
+   "end": 128,
+   "speed": 2,
+   "caption": "차가 정해진 순서로 묻는다: 어디가, 언제부터, 어떨 때, 약, 물어볼 것",
+   "sub": "실제 TTS SDK 요청 뒤 정해진 STT 문자열을 받는다. 약은 읽어 준 뒤 맞는지 한 번 더 확인한다. 실제 마이크 인식률은 검증하지 않았다",
+   "badge": "2배속"
+  },
+  {
+   "type": "clip",
+   "file": "build/video/clips/n_vr1.mp4",
+   "start": 128,
+   "end": 135,
+   "speed": 1,
+   "caption": "달리는 동안에는 메모를 펼치지 않는다",
+   "sub": "주행 제한(CarUxRestrictions)이 켜지면 짧은 안내만. P이고 주행 제한이 풀리면 메모를 보여 준다"
+  },
+  {
+   "type": "clip",
+   "file": "build/video/clips/n_vs1.mp4",
+   "start": 5,
+   "end": 24,
+   "speed": 1.5,
+   "caption": "병원 도착(모의) 뒤 P · 동승석 문 열림(실제 VC 신호)",
+   "sub": "문 열림은 하차 확정이 아니다. 주차 중 진료 메모를 확인한다. 앱은 의학적 판단을 하지 않는다",
+   "badge": "1.5배속"
+  },
+  {
+   "type": "clip",
+   "file": "build/video/clips/n_vs1.mp4",
+   "start": 24,
+   "end": 40,
+   "speed": 1.5,
+   "caption": "가족 공유는 따로 동의한다 (시연용 가족 연결, 외부 전송 없음)",
+   "sub": "좌표와 대화 원문은 보내지 않는다. 승인한 글만, 보낼 때마다 한 번 더 확인한다",
+   "badge": "1.5배속"
+  },
+  {
+   "type": "clip",
+   "file": "build/video/clips/n_vs1.mp4",
+   "start": 42,
+   "end": 100,
+   "speed": 8,
+   "caption": "오는 길 · 출차 직후가 아니라 누적 주행 60초 뒤에 묻는다",
+   "sub": "체류 시간 이동은 모의. 주차장을 빠져나가는 동안에는 말을 걸지 않는다",
+   "badge": "8배속"
+  },
+  {
+   "type": "clip",
+   "file": "build/video/clips/n_vs1.mp4",
+   "start": 100,
+   "end": 175,
+   "speed": 2,
+   "caption": "의사 선생님 말씀을 같은 방식으로 기록한다",
+   "sub": "의사 말씀 · 약 변경 · 검사와 다음 예약(‘2주 뒤 오전 10시’ → 11월 29일) · 주의 · 다음에 확인할 것. 약·예약은 다시 확인한다",
+   "badge": "2배속"
+  },
+  {
+   "type": "clip",
+   "file": "build/video/clips/n_vs2.mp4",
+   "start": 0,
+   "end": 15,
+   "speed": 1.5,
+   "caption": "읽어 준 브리핑을 이번에 가족에게 보낼지 묻는다",
+   "sub": "‘네’ 할 때만 보낸다 (시연용 연결, 가족 답장은 모의)",
+   "badge": "1.5배속"
+  },
+  {
+   "type": "clip",
+   "file": "build/video/clips/n_vs2.mp4",
+   "start": 15,
+   "end": 58,
+   "speed": 6,
+   "caption": "기록 완료 · 운전 중에는 한 줄만",
+   "sub": "‘진료 기록 완료 · 주차 후 확인하세요’",
+   "badge": "6배속"
+  },
+  {
+   "type": "clip",
+   "file": "build/video/clips/n_vs2.mp4",
+   "start": 58,
+   "end": 66,
+   "speed": 1,
+   "caption": "P이고 주행 제한이 풀리면 오늘의 기록 · 다음 예약 · 가족 답장(모의)",
+   "sub": "‘새 진료 준비’로 다음 방문을 시작하면 같은 병원의 ‘다음에 확인할 것’을 먼저 묻는다"
+  },
+  {
+   "type": "title",
+   "lines": [
+    "진료동행",
+    "의료 판단 없음 · 한 돌봄 대상용 · 승인한 글만 공유",
+    "Vehicle 도어 + AAOS 기어·속도 · CarUxRestrictions",
+    "TTS SDK 실제 연결 · STT/목적지/도착/가족 답장 모의"
+   ],
+   "dur": 4
+  }
+ ]
+}

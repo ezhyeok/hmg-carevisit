@@ -2,12 +2,12 @@ package dev.carevisit.core
 
 import kotlinx.serialization.Serializable
 
-@Serializable data class Hospital(val name: String, val latitude: Double? = null, val longitude: Double? = null) {
+@Serializable data class Hospital(val name: String, val latitude: Double? = null, val longitude: Double? = null, val address: String = "") {
     val routable: Boolean get() = latitude?.let { it.isFinite() && it in -90.0..90.0 && it != 0.0 } == true && longitude?.let { it.isFinite() && it in -180.0..180.0 && it != 0.0 } == true
 }
 @Serializable data class Utterance(val id: String, val text: String, val at: Long)
 @Serializable enum class Slot { CONTINUITY, SYMPTOM, DURATION, DETAIL, MEDICATION, QUESTION, DOCTOR, MED_CHANGE, APPOINTMENT, CAUTION, NEXT_CHECK }
-@Serializable data class SlotValue(val utteranceId: String, val verbatim: String, val normalized: String? = null)
+@Serializable data class SlotValue(val utteranceId: String, val verbatim: String, val normalized: String? = null, val needsConfirmation: Boolean = false)
 @Serializable data class Appointment(val date: String? = null, val time: String? = null, val needsConfirmation: Boolean = true, val verbatim: String = "", val utteranceId: String = "")
 @Serializable data class Visit(
     val id: String, val hospital: Hospital, val createdAt: Long,
@@ -26,11 +26,13 @@ import kotlinx.serialization.Serializable
 @Serializable enum class Phase { IDLE, WAIT_SAFE, HEALTH_CONSENT, OFFER_PRE, PRE, MEMO, AT_HOSPITAL, OFFER_POST, POST, BRIEFING, SHARE, REMINDER, DONE, RECOVERY }
 @Serializable enum class Rendezvous { NONE, AT_GATE, PARKING, OUTSIDE }
 @Serializable enum class AskKind { HEALTH, PRE_OFFER, SLOT, MORE_QUESTIONS, MED_CHANGED, POST_OFFER, SHARE_MEMO, SHARE_BRIEFING, REMINDER, ROUTE }
-@Serializable data class Prompt(val id: Long, val kind: AskKind, val text: String, val slot: Slot? = null, val retry: Int = 0)
+@Serializable data class Prompt(val id: Long, val kind: AskKind, val text: String, val slot: Slot? = null, val retry: Int = 0, val confirming: Boolean = false, val correction: Boolean = false)
 @Serializable data class Session(
     val phase: Phase = Phase.IDLE, val visit: Visit? = null, val slotIndex: Int = 0,
     val arrivedAt: Long? = null, val rendezvous: Rendezvous = Rendezvous.NONE, val droppedOff: Boolean = false, val parkingMode: Boolean = false,
     val prompt: Prompt? = null, val resumePhase: Phase? = null, val briefing: String = "", val offered: Boolean = false,
+    val returnPending: Boolean = false,
+    val pendingHospital: Hospital? = null,
 )
 @Serializable data class Archive(val schema: Int = 1, val consent: Consent = Consent(), val settings: Settings = Settings(), val visits: List<Visit> = emptyList(), val session: Session = Session())
 enum class Gear { UNKNOWN, P, D, OTHER }
@@ -41,6 +43,7 @@ data class ViewState(val archive: Archive = Archive(), val restricted: Boolean =
 object Policy {
     const val SAFE_DRIVE_MS = 60_000L
     const val STAY_MS = 15 * 60_000L
+    const val ARRIVAL_CANDIDATE_MS = 30_000L
     const val LISTEN_MS = 12_000L
     const val POLISH_MS = 8_000L
     const val HEALTH_LINE = "진료 준비를 위해 말씀하신 건강 정보를 이 기기에만 기본 180일 보관합니다. 언제든 전체 삭제할 수 있어요. 민감정보 수집과 보관에 동의하시나요?"

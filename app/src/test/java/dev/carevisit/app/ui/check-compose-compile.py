@@ -9,6 +9,7 @@ Only the generated R.string.app_name ID is a stand-in for Android resource proce
 from concurrent.futures import ThreadPoolExecutor
 from pathlib import Path
 import re
+import shutil
 import subprocess
 import tempfile
 import urllib.request
@@ -82,11 +83,16 @@ def prepare():
 
 def main():
     prepare()
+    # Isolate core outputs from CORE's concurrent tests; use its actual, unmodified sources.
+    core = WORK / "visit-core"
+    shutil.copytree(REPO / "visit-core/src/main", core / "src/main")
+    for filename in ("build.gradle.kts", "settings.gradle.kts", "gradle.properties"):
+        shutil.copy2(REPO / "visit-core" / filename, core / filename)
     (WORK / "settings.gradle.kts").write_text('''
 pluginManagement { repositories { gradlePluginPortal(); mavenCentral() } }
 dependencyResolutionManagement { repositories { mavenCentral() } }
 rootProject.name = "carevisit-compose-source-check"
-includeBuild(System.getenv("CAREVISIT_UI_REPO") + "/visit-core")
+includeBuild("visit-core")
 ''')
     (WORK / "build.gradle.kts").write_text('''
 plugins {

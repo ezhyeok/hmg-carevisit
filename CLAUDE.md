@@ -150,14 +150,14 @@
 ## 이 앱: 병원 방문 준비·기록
 - package/applicationId `dev.carevisit.app`, core package `dev.carevisit.core`. 앱 이름의 원본은 `app/src/main/res/values/strings.xml`의 `app_name`, Android 상수는 `AppIdentity.NAME`(resource id)이다. 문서 이름은 `tools/laptop/update-label.py`로 동기화한다.
 - Android SDK 없는 서버: `./gradlew -p visit-core test`. 독립 Kotlin composite build이며 Android/SDK 의존성이 없다.
-- `VisitCore` 우편함 액터 → 순수 `VisitMachine` 전이 → 동의·기록의 원자적 저장 → 음성/relay/내비/문장부호 정리 효과. 저장 실패 시 효과를 실행하지 않는다.
-- 진단·중증도·약·용량 제안 금지. 모든 슬롯·예약 원문에 발화 ID가 있다. 정해진 질문·템플릿만 사용한다. LLM은 기본 끔, ON_DEVICE 8초 제한, 원문의 단어 순서까지 보존하는 문장부호 변경만 허용한다.
+- `VisitCore` 우편함 액터 → 순수 `VisitMachine` 전이 → 동의·기록의 원자적 저장 → 음성/relay/내비/공백 정리 효과. 저장 실패 시 효과를 실행하지 않는다.
+- 진단·중증도·약·용량 제안 금지. 모든 슬롯·예약 원문에 발화 ID가 있다. 정해진 질문·템플릿만 사용한다. LLM은 기본 끔, ON_DEVICE 8초 제한, 공백 이외의 모든 문자·기호와 토큰 순서를 보존하는 제한된 공백 정리만 허용한다.
 - 민감정보 수집 동의와 가족 공유 동의를 분리한다. 메모와 브리핑은 보낼 때마다 원문을 읽고 확인한다. 기본 180일(30/90/180/365일), 시작·틱·설정 변경 시 삭제. 전체 삭제는 동의도 철회한다.
 - 앱은 가족 relay에 승인한 메모/브리핑과 고정 상태만 보낸다. 위치·대화 원본은 보내지 않는다. 토큰은 128비트이며 relay 데이터는 메모리에서 24시간 후 만료한다.
-- 목적지 이름 키워드/저장 병원 또는 수동 시작. D에서 차속 0.5m/s 초과로 60초 움직인 뒤 한 번 질문한다. 주차 중 명시적으로 준비 시작도 가능. 도착+P, 동승석 오른쪽 앞문 열림으로 하차 안내. 병원 정차 15분 이후 P→D에서 귀가 질문.
-- 차량 제어·좌석 점유·FusedLocation은 제품에서 사용하지 않는다. 내비 도착 이벤트 또는 목적지 200m 내에서 길안내 종료, 주차 중 수동 도착 확인을 사용한다. 에뮬레이터의 실제 목적지 이름·도착 이벤트 전달은 새 앱에서 검증 필요.
+- 목적지 이름 키워드/저장 병원 또는 수동 시작. D에서 차속 0.5m/s 초과로 60초 움직인 뒤 한 번 질문한다. 주차 중 명시적으로 준비 시작도 가능. 도착+P, 동승석 오른쪽 앞문 열림으로 하차 안내. 병원 정차 15분 이후 P→D에서 귀가 대기에 들어가고, D+움직임 누적60초 뒤 귀가 질문.
+- 차량 제어·좌석 점유·FusedLocation은 제품에서 사용하지 않는다. 내비 도착 이름/주소와 현재 목적지·방문 병원의 일치, 30초 내 P 또는 주차 중 수동 도착 확인을 사용한다. 근접200m+경로 종료 추론은 제거했고 변경/취소/오류는 후보를 폐기한다. 에뮬레이터의 실제 목적지 이름·도착 이벤트 전달은 새 앱에서 검증 필요.
 - 화면은 `UxRestrictionWatcher`와 서비스의 기어/제한을 함께 확인한다. 모름·주행 상태는 짧은 질문/진행/음성 상태만 보여 준다. 긴 메모·기록·설정은 P이고 제한 해제일 때만. CCP 미지원 선언.
-- 시연: `adb shell am start -n dev.carevisit.app/.MainActivity --es demo visit`. 실 TTS 뒤 Scripted SpeechPort 응답, 화면에 “시연: 미리 녹음한 대답”. 실제 기어·도어·제한 유지, 진료 15분은 시연 다음으로 진행. 시연 기록은 메모리에만 있고 실제 기록과 분리된다.
+- 시연: `adb shell am start -n dev.carevisit.app/.MainActivity --es demo visit`. 실 TTS 뒤 Scripted SpeechPort 응답, 화면에 “시연: 미리 정한 대답 · 가족 답장 모의”. 실제 기어·도어·제한 유지, 진료 15분은 시연 다음으로 진행. 시연 기록은 메모리에만 있고 실제 기록과 분리된다.
 - 시연 가족 연결은 `DemoFamilyLink`만 사용한다(HTTP 호출 없음). 화면에서 시연 공유 동의 후 기존 개별 전송 확인을 거쳐 보내면 3초 후 “잘 받았어”, ParkingMode의 시연 답장 명령/다음 단계에서 “나왔어”를 받는다. 동의를 자동 승인하지 않고 종료/철회 때 메모리를 지운다. API는 ARCHITECTURE의 UI 계약, 회귀 검증은 `DemoFamilyLinkTest`.
 - 시연 캡처만 허용한다. `VisitRepositories`는 시연에서 실제 저장소를 열지 않고, 모드 전환은 빈 ViewState 발행·화면 key 교체·이전 화면 명령 거절로 실제 archive/입력값의 유입을 막는다. 실제 화면은 FLAG_SECURE 적용 확인 뒤에만 노출한다. 진입/종료의 캡처 회귀 검증은 `DemoPrivacyTest`와 노트북 화면 녹화로 확인한다.
 - Windows 저장소: `C:\Users\User\hmg-appdev-challenge\repo-visit`. `tools/laptop/sync.sh` 기본 대상도 repo-visit이다. PowerShell은 UTF-8 BOM. 다른 앱의 저장소를 수정하지 않는다.

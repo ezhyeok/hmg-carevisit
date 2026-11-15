@@ -106,6 +106,13 @@ import kotlinx.coroutines.launch
             if (kind != AskKind.HEALTH) { withFrameNanos { }; journey.bringIntoView() }
         }
     }
+    LaunchedEffect(parked.destinationChange) {
+        if (parked.destinationChange != null) {
+            tab = 0
+            withFrameNanos { }
+            journey.bringIntoView()
+        }
+    }
     BoxWithConstraints(Modifier.fillMaxSize()) {
         val wide = maxWidth >= 1100.dp
         Column(Modifier.fillMaxSize().padding(horizontal = if (wide) 48.dp else 40.dp, vertical = 32.dp), verticalArrangement = Arrangement.spacedBy(24.dp)) {
@@ -172,12 +179,34 @@ import kotlinx.coroutines.launch
         if (model.showVoiceStatus) Text(model.voice, style = VisitType.Strong, color = MaterialTheme.colorScheme.tertiary)
         model.parked?.notice?.let { SupportingText(it) }
         val completion = model.parked?.completion
-        if (completion != null) {
+        val destination = model.parked?.destinationChange
+        if (destination != null) {
+            StatusLabel("방문 병원 확인")
+            Text(destination.name, style = VisitType.Title)
+            SupportingText("기존 메모는 진료 기록에 남기고 이 병원 진료를 준비해요.")
+            VisitButton("이 병원으로 준비", Modifier.fillMaxWidth(), primary = true) {
+                destinationCommand(state, model.glance, destination, true)?.let { VisitStore.send(it) }
+            }
+            VisitButton("현재 병원 유지", Modifier.fillMaxWidth()) {
+                destinationCommand(state, model.glance, destination, false)?.let { VisitStore.send(it) }
+            }
+        } else if (completion != null) {
+            var pickingHospital by remember(session.visit?.id) { mutableStateOf(false) }
             completion.appointment?.let {
                 Text("다음 예약", style = VisitType.Strong)
                 Text(it, style = VisitType.Body)
             }
+            completion.reminderNotice?.let { SupportingText(it) }
             VisitButton(completion.actionLabel, Modifier.fillMaxWidth(), primary = true, onClick = onViewRecords)
+            if (completion.hospitals.isNotEmpty()) VisitButton("새 진료 준비", Modifier.fillMaxWidth()) { pickingHospital = true }
+            if (pickingHospital) NewVisitDialog(completion.hospitals,
+                onDismiss = { pickingHospital = false },
+                onStart = { hospital ->
+                    newVisitCommand(state, model.glance, hospital)?.let { command ->
+                        pickingHospital = false
+                        VisitStore.send(command)
+                    }
+                })
         } else if (session.phase == Phase.RECOVERY) {
             VisitButton("기록 이어가기", Modifier.fillMaxWidth(), primary = true) { VisitStore.send(Event.Resume) }
             var abandon by remember { mutableStateOf(false) }
@@ -195,7 +224,16 @@ import kotlinx.coroutines.launch
                     VisitButton("가족에게 보내기", Modifier.fillMaxWidth(), primary = true) { VisitStore.send(Event.Answer(prompt.id, "네", true)) }
                     VisitButton("보내지 않기", Modifier.fillMaxWidth()) { VisitStore.send(Event.Answer(prompt.id, "아니요", true)) }
                 }
-                AskKind.SLOT -> {
+                AskKind.SLOT -> if (prompt.confirming) {
+                    StatusLabel("기록 확인")
+                    model.answers.forEachIndexed { index, answer ->
+                        VisitButton(answer.label, Modifier.fillMaxWidth(), primary = index == 0, enabled = answer.enabled) {
+                            VisitStore.send(Event.Answer(prompt.id, answer.answer, touch = true))
+                        }
+                    }
+                    if (prompt.correction) SupportingText("맞지 않으면 ‘확인 필요’로 남겨 주세요.")
+                } else {
+                    if (prompt.correction) SupportingText("다시 들은 내용으로 현재 기록을 바꿔요.")
                     VisitButton("말로 답하기", Modifier.fillMaxWidth(), primary = true) { VisitStore.send(Event.RetryVoice) }
                     VisitButton("넘어가기", Modifier.fillMaxWidth()) { VisitStore.send(Event.Answer(prompt.id, "넘어가", true)) }
                 }
@@ -212,10 +250,22 @@ import kotlinx.coroutines.launch
                 VisitButton("병원 가는 길", Modifier.fillMaxWidth(), primary = true) { VisitStore.send(Event.Manual(state.archive.settings.hospitals.firstOrNull() ?: Hospital("병원"))) }
                 VisitButton("음성으로 말하기", Modifier.fillMaxWidth()) { VisitStore.send(Event.CommandListen) }
             }
-            Phase.WAIT_SAFE -> VisitButton("진료 준비 시작", Modifier.fillMaxWidth(), primary = true) { VisitStore.send(Event.PrepareParked) }
+            Phase.WAIT_SAFE -> VisitButton(if (session.returnPending) "진료 내용 정리" else "진료 준비 시작", Modifier.fillMaxWidth(), primary = true) { VisitStore.send(Event.PrepareParked) }
             Phase.MEMO -> VisitButton("정문 도착", Modifier.fillMaxWidth(), primary = true) { VisitStore.send(Event.Arrived) }
             Phase.AT_HOSPITAL -> if (!session.parkingMode) VisitButton("내려 드리고 주차", Modifier.fillMaxWidth(), primary = true) { VisitStore.send(Event.ParkingMode) }
             else -> Unit
+        }
+    }
+}
+
+@Composable private fun NewVisitDialog(hospitals: List<Hospital>, onDismiss: () -> Unit, onStart: (Hospital) -> Unit) {
+    var selected by remember(hospitals) { mutableStateOf(hospitals.first()) }
+    Confirmation("어느 병원 진료를 준비할까요?", "선택한 병원으로 준비", onDismiss, { onStart(selected) }) {
+        SupportingText("저장한 병원과 방금 방문한 병원이에요. 마친 진료 기록은 그대로 남아요.")
+        Column(Modifier.selectableGroup(), verticalArrangement = Arrangement.spacedBy(16.dp)) {
+            hospitals.forEach { hospital ->
+                Choice(hospital.name, selected == hospital, Modifier.fillMaxWidth()) { selected = hospital }
+            }
         }
     }
 }
@@ -237,6 +287,8 @@ import kotlinx.coroutines.launch
             StatusLabel("시연")
             Text(UiCopy.DEMO, style = VisitType.Small, modifier = Modifier.weight(1f))
         }
+        SupportingText(UiCopy.DEMO_MOCK)
+        SupportingText(UiCopy.DEMO_CONNECTED)
         Row(horizontalArrangement = Arrangement.spacedBy(16.dp)) {
             if (model.consent.canPair) VisitButton("시연 가족 공유 동의", Modifier.weight(1f), onClick = onConsent)
             if (state.archive.consent.familyAt != null) StatusLabel("시연용 가족 연결")

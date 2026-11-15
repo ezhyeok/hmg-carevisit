@@ -10,7 +10,7 @@ import java.util.concurrent.atomic.AtomicReference
 import java.util.concurrent.atomic.AtomicBoolean
 import kotlin.coroutines.resume
 
-/** Optional ON_DEVICE punctuation-only request; never blocks a voice or vehicle thread.
+/** Optional ON_DEVICE whitespace-only request; never blocks a voice or vehicle thread.
  * No server registration, no secrets. Each request has its own listener and SDK instance. */
 class LlmKit(context: Context) {
     private val appContext=context.applicationContext
@@ -25,7 +25,7 @@ class LlmKit(context: Context) {
                         if(!cont.isActive) return@execute
                         try {
                             val sdk=LLM(appContext,Mode.ON_DEVICE); current.set(sdk); sdk.initialize()
-                            sdk.generateContent("다음 기록의 모든 단어와 순서를 그대로 유지하세요. 띄어쓰기와 문장부호만 정리하고 기록만 출력하세요. 내용 추가, 삭제, 판단 금지.\n"+source,object: ResultListener {
+                            sdk.generateContent("다음 기록의 공백만 정리하고 기록만 출력하세요. 공백 이외의 모든 문자, 숫자, 문장부호, 기호와 순서를 그대로 유지하세요. 내용 추가, 삭제, 판단 금지.\n"+source,object: ResultListener {
                                 override fun onResponse(response: String,completed: Boolean) { if(completed) finish(response) }
                                 override fun onError(reason: String) { finish(null) }
                             })

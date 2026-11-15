@@ -4,11 +4,15 @@ set -euo pipefail
 visit_repo=$(git -C "$(dirname "${BASH_SOURCE[0]}")" rev-parse --show-toplevel)
 ui_test_dir=$(mktemp -d /tmp/carevisit-ui-tests.XXXXXX)
 export CAREVISIT_UI_REPO="$visit_repo"
+# Compile an unchanged source snapshot: parallel agents must not share visit-core/build.
+mkdir -p "$ui_test_dir/visit-core/src"
+cp -a "$visit_repo/visit-core/src/main" "$ui_test_dir/visit-core/src/"
+cp "$visit_repo/visit-core/build.gradle.kts" "$visit_repo/visit-core/settings.gradle.kts" "$visit_repo/visit-core/gradle.properties" "$ui_test_dir/visit-core/"
 cat > "$ui_test_dir/settings.gradle.kts" <<'KOTLIN'
 pluginManagement { repositories { gradlePluginPortal(); mavenCentral() } }
 dependencyResolutionManagement { repositories { mavenCentral() } }
 rootProject.name = "carevisit-ui-model-tests"
-includeBuild(System.getenv("CAREVISIT_UI_REPO") + "/visit-core")
+includeBuild("visit-core")
 KOTLIN
 cat > "$ui_test_dir/build.gradle.kts" <<'KOTLIN'
 plugins { kotlin("jvm") version "2.0.0" }

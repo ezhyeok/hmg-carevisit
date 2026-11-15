@@ -2,6 +2,15 @@
 
 ## UI 계약
 
+### 심사 개선 계약 (2026-11-15)
+
+- enum은 유지한다. `Prompt.confirming=true`는 약/예약 원문 확인 단계이며 `kind=SLOT`, `slot`은 해당 항목 그대로다. `correction=true`는 이미 한 번 정정을 요청한 상태다. `Event.Answer`로 네/맞아요는 원문 확인, 아니요/다시 말할게요는 최초 한 번 재입력, 넘어가/확인 필요는 미확인 상태로 진행한다. 주행 화면은 원문을 노출하지 않는 짧은 확인 문구를 사용한다. 재시작·RetryVoice에도 플래그와 재질문 횟수가 유지된다.
+- `SlotValue.needsConfirmation`은 약/예약 STT 확인 상태다. 재입력한 새 슬롯 값만 현재 값으로 연결하고 이전 Utterance와 ID는 보존한다. 확인되지 않은 값을 템플릿에 넣으면 `(확인 필요)`를 붙인다. `Appointment.needsConfirmation`은 날짜/시간 파싱의 모호함까지 포함하므로 “맞아요” 후에도 true일 수 있다. 오전 10시 반=10:30, 복수/정정 후보는 자동 확정·알림 설정하지 않는다.
+- `Session.returnPending=true` + `Phase.WAIT_SAFE`는 귀가 대기다. 체류15분 뒤 P→D는 이 상태만 만들고 발화하지 않는다. D+유효 차속>0.5m/s의 별도 누적60초 후 현재도 움직이는 D일 때 POST_OFFER를 묻는다. P+제한 해제 시 기존 `Event.PrepareParked`로 명시 시작할 수 있다. UNKNOWN/OTHER(후진 포함)는 새 자동 제안을 시작하지 않는다.
+- `Hospital.address`(기본 빈 문자열), `Session.pendingHospital: Hospital?` 추가. 목적지 변경 후보는 P에서 `Event.ConfirmDestination`으로 승인하면 이전 부분 visit를 visits에 보존하고 새 세션을 만든다. `Event.DismissDestination`은 후보만 숨긴다. 주행 중 두 명령은 무시한다. 기존 병원 기록을 새 병원 이름으로 덮어쓰지 않는다.
+- 서비스만 `Event.NavigationArrived(name,address)` / `Event.NavigationCleared`를 사용한다. 키트는 레퍼런스의 DestinationArrivedInfo.name/address를 그대로 전달한다. 현재 목적지·방문과 이름이 같고, 알고 있는 주소도 같을 때만 자동 후보로 인정한다. 변경/취소/연결 오류는 후보를 지우고, 30초 안에 P가 되지 않으면 만료한다. 200m+경로 종료 휴리스틱은 제거했다. UI의 기존 `Event.Arrived`는 명시적 수동 확인 경로다.
+- `DemoTrip`은 같은 가상 병원의 Destination/NavigationArrived를 주입하고, 귀가 WAIT_SAFE에서 실제 D+움직임이 확인되면 딱 한 번 60초를 시간 이동한다. 실제 모드의 대기는 단축하지 않는다. DemoAnswers의 띄어쓰기는 유지하고 확인 프롬프트에만 “맞아요”를 추가했다.
+
 ### 시연 가족 연결 (2026-11-15 추가)
 
 - 시연 시작 시 네트워크 없는 `DemoFamilyLink`가 자동으로 붙는다. 건강/공유 동의는 자동 승인하지 않는다. 실제 relay 주소·토큰·동의는 가져오지 않는다.
@@ -46,7 +55,7 @@
 
 `Settings`의 호환 필드: `honorific`(어머니/아버지/부모님/보호자), `retentionDays`(기본180), `polish`(기본false), `hospitals: List<Hospital>`, `relayUrl`(기본 http://10.0.2.2:8765), `familyToken`. 가족 URL의 노트북 LAN 주소는 화면에서만 조합할 수 있으며 위치 API를 사용하지 않는다.
 
-음성 상태는 `IDLE`, `SPEAKING`, `PREPARING`, `LISTENING`, `UNAVAILABLE`. 듣는 표시는 kit의 onReady에서만 시작한다. `demo=true`일 때 정확한 표시 문구는 “시연: 미리 녹음한 대답”이며 실제 입력은 허구 scripted STT다.
+음성 상태는 `IDLE`, `SPEAKING`, `PREPARING`, `LISTENING`, `UNAVAILABLE`. 듣는 표시는 kit의 onReady에서만 시작한다. `demo=true`일 때 정확한 표시 문구는 “시연: 미리 정한 대답 · 가족 답장 모의”이며 실제 입력은 허구 scripted STT다.
 
 계약 추가: `Session.rendezvous`는 `Rendezvous.NONE/AT_GATE/PARKING/OUTSIDE`다. 가족 “나왔어”를 받았는지 notice 문자열을 분석하지 말고 이 값을 사용한다. `Configure`로 relayUrl을 변경하면 이전 relay 삭제를 시도하고 가족 동의·토큰을 해제한다. 새 URL에서는 별도 가족 동의를 다시 받아야 한다. 최신 UI 사용자 지시에 따라 주행 중에는 현재 질문의 네/아니요/넘어가만 touch 응답으로 허용한다. HEALTH 동의와 자유 입력은 주차 전용이고 UNKNOWN 기어에서는 touch 응답을 받지 않는다.
 
@@ -76,11 +85,11 @@
 
 - AAOS `CarState`: API34 `GEAR_SELECTION`, `PERF_VEHICLE_SPEED`, UX 제한. dangerous CAR_SPEED는 Activity가 런타임 요청한다. FusedLocation은 사용하지 않으므로 해당 권한을 선언하지 않는다.
 - `VehicleKit.passengerDoor()`: `checkDoorPositionCapabilities`로 오른쪽 앞문 지원 확인 후 `doorPosition`을 구독한다. 좌석 점유나 차량 제어 권한은 없다.
-- `VisitNaviKit`: 기존 `NaviKit`을 통해 목적지, guiding, 도착 이벤트, 저장된 좌표의 route를 제공한다. SDK 타입은 kit 밖 앱 코드에 노출하지 않는다. 조회는 20초 간격이며 kit의 직렬 요청 규칙을 유지한다.
+- `VisitNaviKit`: 기존 `NaviKit`을 통해 목적지, guiding, 도착 이벤트, 저장된 좌표의 route를 제공한다. SDK 타입은 kit 밖 앱 코드에 노출하지 않는다. 도착 name/address와 목적지 address를 보존하며, route cancel/destination change/error는 invalidation으로 전달한다. 서비스는 무효화 세대가 바뀐 동안 대기한 목적지 조회 응답을 버린다. SDK에는 도착의 경로 ID/발생 시각이 없어 동일 이름·주소의 반복 경로를 완전히 구분할 수는 없다. 조회는 20초 간격이며 kit의 직렬 요청 규칙을 유지한다.
 - `VoiceAgent`: kit `SpeechInput/Output` + optional focus. demo도 실제 TTS를 끝까지 실행한 뒤 허구 STT 답을 반환한다.
 - `HttpFamilyLink`: 명시적 id/kind/text JSON만 쓴다. redirects를 따르지 않아 bearer token을 다른 호스트로 넘기지 않는다. JSON 응답은 128KiB로 제한하고 전체 데이터 serializer를 사용하지 않는다.
 - `FamilyConnection`은 app 안에서 `FamilyLink`에 poll/close를 더한 인터페이스다. 서비스는 세션마다 `FamilyLinks.open`으로 실제 HTTP 또는 시연 메모리 연결 중 하나를 고르고, 동일 인스턴스를 코어 전송과 응답 조회에 쓴다. 시연에서 실제 어댑터 factory는 호출하지 않는다. `DemoFamilyLink`는 승인 DTO와 고정 답장만 보관하며 중복 전송 ID는 한 번만 처리한다. 종료/모드 전환 시 poll job을 취소·합류하고 기존 코어를 취소한 뒤 close로 메모리를 비운다. 이전 세션의 결과를 새 코어에 주입하지 않는다.
-- `LlmKit`: LLM SDK 2.1.3.2 ON_DEVICE, 별도 스레드, 요청별 listener/instance, 8초 timeout. 늦은 callback은 취소된 요청을 되살리지 않는다. 서버 등록·키·자유 의료 생성은 없다.
+- `LlmKit`: 제한된 공백 정리. 기존 punctuation 메서드 이름은 호환용이며 기호 변경을 허용한다는 뜻이 아니다. LLM SDK 2.1.3.2 ON_DEVICE, 별도 스레드, 요청별 listener/instance, 8초 timeout. 늦은 callback은 취소된 요청을 되살리지 않는다. 서버 등록·키·자유 의료 생성은 없다.
 
 `UxRestrictionWatcher`와 서비스 제한을 모두 확인한다. 모름을 false로 바꾸지 않는다. 라이브 기록의 screenshots/recents 유출을 막기 위해 Activity는 FLAG_SECURE를 사용한다. 시연에서만 캡처를 허용한다. 시연 진입은 새 화면 트리를 만든 뒤 두 번의 Compose frame 경계를 기다려 이전 실제 화면을 교체하고 차단을 해제한다. 시연 종료는 차단 설정 호출이 완료된 뒤 실제 기록을 화면에 전달한다. 전환 중 mode가 바뀌면 기존 LaunchedEffect는 취소된다. 실제 에뮬레이터의 화면 합성·녹화 타이밍은 노트북 검증 대상이다.
 
@@ -96,6 +105,8 @@
 
 코어 테스트는 실 SDK 대신 포트를 사용하여 동의, 60초/15분, 발화 연결, 재질문/건너뛰기, 중복 응답, 가족 승인, 철회, 보관, 8초 fallback, 파일 복구를 검증한다. 파일 테스트는 실제 임시 디렉터리와 원자적 rename을 사용한다. 앱 JVM 테스트는 화면 계약, release 권한/extra 표면, TTS 중단과 onReady 표시, launch Channel을 검증한다. 앱·kit JVM 테스트도 Android Gradle plugin 구성에는 SDK가 필요하므로 노트북에서 실행해야 한다.
 
+범위: 단일 돌봄 대상만 지원하며 호칭 변경은 대상별 동의/기록 전환이 아니다. 도어 열림은 하차 완료 판정이 아니다. 알림은 서비스 실행 중 Tick에서 처리하며 차 시동 감지나 꺼진 차량 깨우기가 아니다. 승인 DTO의 글에는 STT 슬롯 원문이 포함될 수 있다. 시연에서 TTS SDK 요청·VC 기어/속도/도어·UX 제한은 연결 경로이고, STT 대답·목적지/도착·시간 이동·가족 답장은 모의다. 가청 출력과 실제 내비/마이크 성공은 별도 증거가 필요하다.
+
 기술 Q&A의 핵심은 “음성 인식 오류를 의료 추론으로 보정하지 않는다”, “동의·저장 성공 뒤에만 효과를 실행한다”, “공유 포트가 전체 기록/위치를 받을 수 없다”, “LLM의 실패가 제품을 멈추지 않는다”, “차량 신호를 모르면 상세 화면을 잠근다”이다. 어떤 SDK가 실제로 전달하는지는 단위 테스트로 입증할 수 없으며 [SDK_AUDIT.md](SDK_AUDIT.md)의 미검증 목록과 구분한다.
 
 
@@ -103,6 +114,8 @@ Android 없는 어댑터 검증: `./gradlew -p visit-core adapterTest`는 실제
 
 ## 최종 CORE 검증 기록 (2026-11-15)
 
-`./gradlew -p visit-core test adapterTest --console=plain` — BUILD SUCCESSFUL. 코어 **78개**, 실제 Android 없는 앱 어댑터/release 표면 **11개**, 실패/오류 0. 최종 실행에 `-q`를 사용하지 않았다. XML 결과는 `visit-core/build/test-results/test/`와 `adapterTest/`에 생성된다(빌드 산출물, git 제외).
+`./gradlew -p visit-core test adapterTest jar --console=plain` — BUILD SUCCESSFUL. 코어 **99개**, 실제 Android 없는 앱 어댑터/release 표면 **31개**, 실패/오류 0. 최종 실행에 `-q`를 사용하지 않았다. XML 결과는 `visit-core/build/test-results/test/`와 `adapterTest/`에 생성된다(빌드 산출물, git 제외).
 
 특히 동의 전 병원 목적지의 파일 저장 금지, 저장 실패 중 차량 이벤트의 인터뷰 우회 금지, 두 번 재시작한 질문 복구, 초기 Channel 명령과 Boot 순서, 주행 고정 응답의 HEALTH 차단, 귀가 인터뷰 거절 뒤 준비 메모 보존을 회귀 테스트로 확인했다. 이 결과는 Android/Compose/SDK 연결의 컴파일·실행 성공을 뜻하지 않는다.
+
+심사 개선 회귀: 숫자/단위 기호 변경 거절, 반 시각·복수/충돌 후보, 약/예약 원문 읽기·정정 실패·재시작 정정 한도·원문 ID 보존, 귀가 누적60초/UNKNOWN·후진 차단, 목적지 변경·취소·늦은 도착·후보 만료·기존 메모 보존, 실제 DemoAnswers를 쓰는 인터뷰→정문→나왔어→귀가→브리핑 전송→수신 답장 전체 흐름을 검증했다. 시연 테스트의 SpeechPort는 JVM fake이며 실제 TTS SDK 성공 증거가 아니다. 이번 변경 이후의 Android/키트 컴파일과 실제 내비 콜백 순서는 노트북 재검증 대상이다.

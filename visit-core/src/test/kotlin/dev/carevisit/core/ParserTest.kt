@@ -22,7 +22,25 @@ class ParserTest {
     @Test fun ambiguity() { listOf("다음에", "3일", "다음 달", "12월 32일", "오전 15시", "12월 10일 10시").forEach { assertTrue(Dates.parse(it, LocalDate.of(2026,11,15)).needsConfirmation, it) } }
     @Test fun noClampedInvalidDate() { assertNull(Dates.parse("다음 달 31일", LocalDate.of(2026,1,10)).date) }
     @Test fun leapDay() { assertEquals("2028-02-29",Dates.parse("2028년 2월 29일",LocalDate.of(2026,11,15)).date) }
-    @Test fun polishAcceptsOnlySafeLayoutChanges() { assertTrue(PolishGuard.accept("무릎: 사흘 전부터\n약: 기존 약", "무릎: 사흘 전부터. 약: 기존 약")) }
+    @Test fun polishAcceptsOnlySafeLayoutChanges() { assertTrue(PolishGuard.accept("무릎: 사흘 전부터\n약: 기존 약", "무릎: 사흘 전부터 약: 기존 약")) }
+    @Test fun polishPreservesEveryNonWhitespaceCharacter() {
+        listOf("약 1~2정" to "약 1.2정", "약 1.2정" to "약 1/2정", "약 1/2정" to "약 1.2정",
+            "약 2mg/일" to "약 2mg·일", "무릎: 통증 없음" to "무릎: 통증 없음.").forEach { (source, changed) ->
+            assertFalse(PolishGuard.accept(source, changed), "$source -> $changed")
+        }
+    }
+    @Test fun halfHourIsThirtyMinutes() {
+        val a=Dates.parse("12월 10일 오전 10시 반", LocalDate.of(2026,11,15))
+        assertEquals("10:30",a.time); assertFalse(a.needsConfirmation)
+    }
+    @Test fun conflictingDatesAndTimesStayVerbatim() {
+        listOf("12월 10일 오전 3시 아니 4시", "12월 10일 오전 3시 오후 4시", "12월 10일 아니 12월 11일 오전 10시",
+            "12월 10일 오전 10시 20분 반", "12월 10일 오전 10시 반 20분", "12월 10일 오전 10시 20분 30분",
+            "내일 아니 2주 뒤 오전 10시").forEach { text ->
+            val a=Dates.parse(text,LocalDate.of(2026,11,15))
+            assertTrue(a.needsConfirmation,text); assertEquals("$text (확인 필요)",Dates.display(a))
+        }
+    }
     @Test fun polishRejectsNewMedicalMeaning() { listOf("무릎: 심각합니다", "허리: 사흘 전부터", "무릎: 3일, 아스피린 2정", "무릎: 괜찮습니다").forEach { assertFalse(PolishGuard.accept("무릎: 사흘 전부터", it)) } }
     @Test fun polishRejectsOmissionNegationAndLongText() { assertFalse(PolishGuard.accept("통증 없음", "통증")); assertFalse(PolishGuard.accept("약 1정", "약 2정")); assertFalse(PolishGuard.accept("약 1정", "약 1정".repeat(4))) }
     @Test fun hospitalKeywordsAndSaved() { listOf("병원","의원","의료원","클리닉","한의원","치과","보건소").forEach { assertTrue(TripRules.isHospital("○○$it",emptyList())) }; assertTrue(TripRules.isHospital("정기 방문처", listOf(Hospital("정기 방문처")))); assertFalse(TripRules.isHospital("공원",emptyList())) }

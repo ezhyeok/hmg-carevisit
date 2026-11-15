@@ -61,7 +61,7 @@ private enum class SettingsConfirm { DELETE, WITHDRAW, FAMILY_ON, FAMILY_OFF }
         Column(Modifier.widthIn(max = 1280.dp).fillMaxSize().imePadding().verticalScroll(rememberScrollState()), verticalArrangement = Arrangement.spacedBy(24.dp)) {
             VisitCard {
                 SectionTitle("어떻게 불러 드릴까요?")
-                SupportingText("실명 대신 호칭을 사용해요.")
+                SupportingText("한 분의 기록에 쓰는 호칭이에요. 호칭을 바꿔도 기록의 대상은 바뀌지 않아요.")
                 Column(Modifier.selectableGroup(), verticalArrangement = Arrangement.spacedBy(16.dp)) {
                     UiCopy.HONORIFICS.chunked(2).forEach { row ->
                         Row(horizontalArrangement = Arrangement.spacedBy(16.dp)) {
@@ -167,11 +167,11 @@ private enum class SettingsConfirm { DELETE, WITHDRAW, FAMILY_ON, FAMILY_OFF }
                 SupportingText("가족 화면의 기록은 24시간 뒤 지워져요. 다시 사용하려면 연결을 새로 만들어 주세요.")
             }
             VisitCard {
-                SectionTitle("문장 다듬기")
-                Text("말씀의 내용은 그대로, 표현만 정리해요.", style = VisitType.Body)
-                SupportingText("기본은 꺼짐입니다. 켜면 기기 안의 AI가 문장부호를 정리해요. 늦거나 내용이 달라지면 원래 기록을 사용해요.")
+                SectionTitle("공백 정리")
+                Text("글자·숫자·문장부호는 바꾸지 않아요.", style = VisitType.Body)
+                SupportingText("기본은 꺼짐입니다. 켜면 기기 안의 AI가 공백만 정리해요. 늦거나 공백 외 내용이 달라지면 원래 기록을 사용해요.")
                 Row(Modifier.fillMaxWidth().heightIn(min = 80.dp).toggleable(value = settings.polish, role = Role.Switch, onValueChange = { VisitStore.send(Event.Configure(settings.copy(polish = it))) }), verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(24.dp)) {
-                    Text(if (settings.polish) "문장 다듬기 켜짐" else "문장 다듬기 꺼짐", Modifier.weight(1f), style = VisitType.Strong)
+                    Text(if (settings.polish) "공백 정리 켜짐" else "공백 정리 꺼짐", Modifier.weight(1f), style = VisitType.Strong)
                     Switch(checked = settings.polish, onCheckedChange = null)
                 }
             }

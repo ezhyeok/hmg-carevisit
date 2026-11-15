@@ -102,6 +102,9 @@ class CompletionScreenTest {
         assertFalse(shouldRequestBriefingAfterDemoConsent(connected.copy(archive = connected.archive.copy(consent = Consent(familyAt = 2))), "today"))
         val busy = connected.copy(archive = connected.archive.copy(session = connected.archive.session.copy(prompt = Prompt(9, AskKind.REMINDER, "예약 알림"))))
         assertFalse(shouldRequestBriefingAfterDemoConsent(busy, "today"))
+        val changing = connected.copy(archive = connected.archive.copy(session = connected.archive.session.copy(pendingHospital = Hospital("다른 병원"))))
+        assertFalse(shouldRequestBriefingAfterDemoConsent(changing, "today"))
+        assertEquals(BriefingShareAction.NONE, ScreenModel.from(changing, false).parked!!.shareAction)
     }
 
     @Test fun sharingAfterDemoConsentStillOnlyOpensThePerBriefingQuestion() {

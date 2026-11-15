@@ -46,7 +46,7 @@ import dev.carevisit.core.*
             TodayCard.MEMO -> MemoCard(model.memo,
                 modifier = if (model.briefing == null) recordsModifier else Modifier,
                 onCheck = { VisitStore.send(Event.Checked(it)) }) {
-                if (model.consent.canShare) VisitButton("진료 메모 보내기", Modifier.fillMaxWidth(), enabled = session.prompt == null) { VisitStore.send(Event.ShareMemo) }
+                if (model.consent.canShare) VisitButton("진료 메모 보내기", Modifier.fillMaxWidth(), enabled = session.prompt == null && session.pendingHospital == null) { VisitStore.send(Event.ShareMemo) }
                 session.visit?.hospital?.takeIf { h -> h.name != "병원" && state.archive.settings.hospitals.none { it.name == h.name } }?.let { hospital ->
                     VisitButton("정기 병원으로 저장", Modifier.fillMaxWidth()) {
                         VisitStore.send(Event.Configure(state.archive.settings.copy(hospitals = state.archive.settings.hospitals + hospital)))
@@ -124,7 +124,7 @@ import dev.carevisit.core.*
                 SectionTitle("다음 예약")
                 // The latest visit is authoritative: an older appointment must not look like a new one.
                 Text(current.entries.first().appointment ?: "아직 기록된 예약이 없어요", style = VisitType.Title)
-                if (current.entries.first().reminder) SupportingText("예약일에 시동을 켜면 알려 드려요.")
+                if (current.entries.first().reminder) SupportingText(UiCopy.REMINDER)
                 SupportingText(current.hospital)
             }
         }

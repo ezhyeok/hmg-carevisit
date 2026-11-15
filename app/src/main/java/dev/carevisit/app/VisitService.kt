@@ -26,13 +26,14 @@ class VisitService : PleosForegroundService() {
     private var viewJob: Job?=null
     private var demo=false
     private var demoOffset=0L
+    private var demoTrip=DemoTrip()
     private var gear=Gear.UNKNOWN
     private var speed: Double?=null
     private var door=false
     private var restricted=true
     private val signalJobs=mutableListOf<Job>()
     private fun signal() {
-        if(demo && gear==Gear.P && door && core?.state?.value?.archive?.session?.phase==Phase.MEMO) core?.send(Event.Arrived)
+        if(demo && gear==Gear.P && door && core?.state?.value?.archive?.session?.phase==Phase.MEMO) core?.send(demoTrip.arrival)
         core?.send(Event.Vehicle(gear,speed,restricted,door))
     }
     override fun onServiceStarted() {
@@ -58,7 +59,7 @@ class VisitService : PleosForegroundService() {
         // Clear outgoing records before any suspend point in a mode switch.
         VisitStore.publish(ViewState(demo=enabled))
         viewJob?.cancelAndJoin(); familyJob?.cancelAndJoin(); coreJob?.cancelAndJoin(); family?.close(); tts.stop(); stt.stop()
-        demo=enabled; demoOffset=0
+        demo=enabled; demoOffset=0;demoTrip=DemoTrip()
         val repository=VisitRepositories.open(demo) { AtomicRepository(File(filesDir,"visits.json")) }
         val connection=FamilyLinks.open(demo,{SystemClock.elapsedRealtime()}) {HttpFamilyLink()}
         family=connection
@@ -73,6 +74,10 @@ class VisitService : PleosForegroundService() {
             var announced=false
             next.state.collect {
                 VisitStore.publish(it.copy(demo=enabled))
+                if(enabled) {
+                    val advance=demoTrip.returnAdvance(it,speed)
+                    if(advance>0) {demoOffset+=advance;next.send(Event.Tick)}
+                }
                 if(enabled && !announced && it.archive.session.visit!=null) {announced=true;Log.i("CareVisit","demo started: visit")}
             }
         }
@@ -89,7 +94,7 @@ class VisitService : PleosForegroundService() {
             }
         }
         signal()
-        if(demo) next.send(Event.Manual(Hospital("○○대학교병원")))
+        if(demo) next.send(demoTrip.destination)
     }
     private fun demoOutside() {
         val active=core; val link=family
@@ -98,9 +103,9 @@ class VisitService : PleosForegroundService() {
     private fun demoNext() {
         if(!demo) return
         when(core?.state?.value?.archive?.session?.phase) {
-            Phase.IDLE,Phase.DONE -> core?.send(Event.Manual(Hospital("○○대학교병원")))
+            Phase.IDLE,Phase.DONE -> core?.send(demoTrip.destination)
             Phase.WAIT_SAFE -> if(gear==Gear.P && !restricted) core?.send(Event.PrepareParked) else {demoOffset+=Policy.SAFE_DRIVE_MS; core?.send(Event.Tick)}
-            Phase.MEMO -> {core?.send(Event.Arrived); signal()}
+            Phase.MEMO -> {core?.send(demoTrip.arrival); signal()}
             Phase.AT_HOSPITAL -> {demoOutside(); demoOffset+=Policy.STAY_MS; core?.send(Event.Notice("시연: 진료 15분 경과 · Virtual Console에서 기어 D로 출발하세요."))}
             else -> core?.send(Event.Notice("시연 질문과 대답이 진행 중이에요."))
         }
@@ -141,22 +146,27 @@ class VisitService : PleosForegroundService() {
             try {
                 navi.connect()
                 coroutineScope {
-                    launch {navi.arrivals().collect {if(!demo) core?.send(Event.Arrived)}}
+                    var revision=0L
+                    launch {navi.navigationEvents().collect { event ->
+                        if(event is VisitNavigationEvent.Invalidated) revision++
+                        if(!demo) when(event) {
+                            is VisitNavigationEvent.Arrived -> core?.send(Event.NavigationArrived(event.info.name,event.info.address))
+                            VisitNavigationEvent.Invalidated -> core?.send(Event.NavigationCleared)
+                        }
+                    }}
                     launch {
-                        var wasGuiding=false; var nearHospital=false
                         while(isActive) {
+                            val active=core;val before=revision
                             val guiding=navi.guiding()
                             if(guiding) {
                                 val d=navi.destination()
-                                if(!demo) core?.send(Event.Destination(Hospital(d.name,d.latitude,d.longitude)))
-                                nearHospital=d.remainingM in 0..200 && TripRules.isHospital(d.name,core?.state?.value?.archive?.settings?.hospitals.orEmpty())
-                            } else if(wasGuiding && nearHospital && !demo) core?.send(Event.Arrived)
-                            wasGuiding=guiding
+                                if(!demo && before==revision && core===active) active?.send(Event.Destination(Hospital(d.name,d.latitude,d.longitude,d.address)))
+                            } else if(!demo && before==revision && core===active) active?.send(Event.NavigationCleared)
                             delay(20_000)
                         }
                     }
                 }
-            } catch(e: CancellationException) {throw e} catch(_: Exception) {delay(10_000)}
+            } catch(e: CancellationException) {throw e} catch(_: Exception) {if(!demo) core?.send(Event.NavigationCleared);delay(10_000)}
         }
     }
     override fun onDestroy() {

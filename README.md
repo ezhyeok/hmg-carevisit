@@ -1,109 +1,131 @@
 # 진료동행
 <!-- app-label: 진료동행 -->
 
-**부모님과 병원에 가는 길에는 진료 메모를, 돌아오는 길에는 가족에게 전할 진료 기록을 음성으로 정리하는 차량용 앱입니다.**
+**부모님과 병원에 가는 길에는 물어볼 말을, 돌아오는 길에는 가족에게 전할 말을 정리하는 차량용 앱입니다.** 기록 자체보다 **병원 이동과 차량 신호에 대화 시점을 연결하는 것**에 집중합니다. 의료 판단을 하지 않습니다.
 
-앱 이름의 원본은 [`app_name`](app/src/main/res/values/strings.xml)이며 패키지는 `dev.carevisit.app`입니다. 이름 변경 뒤 `python3 tools/laptop/update-label.py`로 문서 표시를 동기화합니다. 의학적 판단을 하지 않습니다. 진단·증상 해석·중증도 판단·약이나 용량 추천 대신, 사용자가 말한 내용을 고정 질문과 항목으로 기록합니다.
+## 심사자 빠른 시작 — 제출 APK
 
-## 실행 방법
+**[`apk/차곡_진료동행_release.apk`](apk/차곡_진료동행_release.apk)**를 Pleos Connect Emulator v2.1.0(API 34)에 설치합니다. Android 빌드·release APK·에뮬레이터 시연은 **2026-11-15에 검증**했습니다. 아래는 소스 빌드 없이 제출 APK를 실행하는 순서입니다.
 
-Pleos Connect의 Android Automotive 환경에서 실행합니다. Windows 노트북의 프로젝트 폴더에 JDK/Android SDK, Pleos 시스템 이미지, 프로젝트 전용 Gradle 홈을 준비합니다. 기존 환경의 복사·빌드·에뮬레이터 설정은 [노트북 도구 안내](tools/laptop/README.md)를 따릅니다.
+```sh
+adb install -r "apk/차곡_진료동행_release.apk"
+adb shell pm grant --user current dev.carevisit.app android.car.permission.CAR_SPEED
+adb shell am start -S --user current -n dev.carevisit.app/.MainActivity --es demo visit
+```
 
-서버에서 노트북으로 복사:
+`--user current`는 Pleos의 현재 사용자에 권한을 줍니다. `-S`는 기존 프로세스를 종료해 시연 인텐트를 확실히 반영합니다. 다른 서명의 앱이 설치돼 있으면 설치가 실패할 수 있습니다. 삭제·재설치는 기존 방문 기록도 지우므로 자동 제거하지 않습니다.
+
+| 제출 APK 확인값 | 값 |
+|---|---|
+| 패키지 / 버전 | `dev.carevisit.app` / `0.1.0` (versionCode `1`, APK manifest 직접 확인) |
+| 크기 | 41,847,536 bytes |
+| SHA-256 | `75f825691d12f2c2396fe7c6b4bd5c667591b61ff814af7ae81b7d4b840edef4` |
+
+위 값은 2026-11-15 이 저장소의 소스로 만든 release 빌드 기준입니다(노트북 assembleRelease, 앱·kit 단위 테스트 통과, 에뮬레이터에서 시연 흐름 확인). 상세 검증 범위는 [SDK_AUDIT](docs/SDK_AUDIT.md)에 있습니다.
+
+### Virtual Console 순서
+
+시연은 허구의 병원·대답을 사용하고 메모리에만 저장합니다. **가족 HTTP relay나 휴대폰은 이 시연에 필요하지 않습니다.** VC 연결 도구가 준비된 서버에서 실행합니다([노트북·터널 준비](tools/laptop/README.md)).
+
+```sh
+tools/vc/vc.sh up
+tools/vc/vc.sh play tools/vc/visit-drive.vc
+```
+
+1. **가는 길:** P→D, 40km/h, 누적 주행 60초 뒤 동의·고정 질문을 시작합니다. 60초는 제품 설계값이며 도로 안전 상태를 판정한 결과가 아닙니다. 인터뷰가 끝나 **메모가 완성될 때까지** 기다립니다.
+2. **문 열림:** `tools/vc/vc.sh play tools/vc/visit-dropoff.vc`. 속도 0→P→동승석 앞문 열림을 보냅니다. 문 열림은 실제 하차의 증거가 아닙니다. P이고 주행 제한이 풀리면 메모를 확인합니다.
+3. **주차·합류:** `tools/vc/vc.sh play tools/vc/visit-wait.vc`. 앱의 주차 후 합류를 선택하고 시연 패널에서 가족 공유에 별도로 동의합니다. 메모 전송도 한 번 더 확인합니다. 패널의 **시연 답장 · 나왔어**로 모의 합류 답장을 보냅니다.
+4. **오는 길:** P 화면의 **진료 끝**으로 15분 체류를 건너뛴 후 `tools/vc/vc.sh play tools/vc/visit-return.vc`. 귀가 인터뷰와 브리핑·이번 전송 확인을 기다립니다. 개선 소스의 실제 모드는 D 전환 뒤 누적 주행 60초를 새로 기다립니다. 시연의 시간 이동은 이 실제 대기를 검증한 것이 아니며 기존 APK·녹화와 구분합니다([검증 기록](docs/SDK_AUDIT.md)).
+5. **기록 확인:** `tools/vc/vc.sh speed 0` 후 `tools/vc/vc.sh gear Park`. 주행 제한이 풀리면 상세 기록을 봅니다. **잘 받았어**는 승인 전송 후 수 초 뒤 들어오는 모의 답장입니다. 종료는 앱의 시연 종료 → `tools/vc/vc.sh down` 순서입니다.
+
+### REAL / MOCK — 이 시연으로 확인할 수 있는 것
+
+| 구분 | 시연에서 사용하는 것 | 입증하지 않는 것 |
+|---|---|---|
+| REAL | Pleos **TTS SDK 요청·완료 이벤트** | `-no-audio`·무음 녹화이므로 실제 들리는 출력 품질 |
+| REAL | **Vehicle 도어 + AAOS 기어·속도**, Virtual Console 입력과 상태 전이 | 승객의 실제 하차·도로 안전 여부 |
+| REAL | **CarUxRestrictions**에 따른 상세 화면 제한 | 모든 실차·모든 창 크기의 인증 |
+| MOCK | STT 답변 문자열, 병원 목적지·도착, 체류시간 이동 | 실제 마이크 인식률·실제 NaviHelper 도착 성공 |
+| MOCK | `DemoFamilyLink` 메모리 연결의 나왔어·잘 받았어 | HTTP relay·휴대폰 왕복 통신 |
+
+시연 UI의 ‘미리 정한 대답’은 음성 녹음 파일이 아닙니다. 이전 APK·캡처의 ‘미리 녹음한 대답’도 같은 scripted STT를 가리킵니다. 실제 모드에는 STT·NaviHelper·HTTP 연결 코드가 있지만 위 시연의 성공을 해당 경로의 검증으로 계산하지 않습니다. LLM은 기본 꺼짐이며 없어도 고정 서식으로 기록을 만듭니다.
+
+## 시연 영상
+
+[`docs/demo/jinryo-donghaeng-demo.mp4`](docs/demo/jinryo-donghaeng-demo.mp4): 2분 35초, 에뮬레이터·Virtual Console 화면 녹화와 자막, 소리 없음. 동의 → 가는 길 인터뷰 → P·문 열림과 메모 → 공유 확인 → 오는 길 브리핑 → 모의 가족 답장. 자막 원본은 `tools/video/spec.json`, 재생성 도구는 `tools/video/make_video.py`입니다. 실제/모의 범위는 위 표를 기준으로 봅니다.
+
+## 대안과 구분되는 지점
+
+특정 제품의 기능 평가가 아니라, 일반적인 수동 사용 방식과 현재 구현을 비교한 설계표입니다.
+
+| 비교 축 | 휴대폰 음성 메모 | 메신저 | 진료동행 |
+|---|---|---|---|
+| 시작을 기억하는 부담 | 직접 녹음 시작 | 직접 대화방 열기 | 병원 목적지에서 준비 제안 |
+| 병원 이동과 기록 연결 | 제목·폴더로 수동 연결 | 대화 내용으로 구분 | 같은 방문의 준비·귀가 기록 연결 |
+| P/D·도어 맥락 | 사용자가 판단 | 사용자가 판단 | 차량 신호로 문 열림·귀가 시점 구분 |
+| 주행 중 상세 제한 | 사용자가 조절 | 사용자가 조절 | P와 UX 제한 해제를 함께 확인 |
+| 다음 정기 진료 재사용 | 이전 녹음 찾기 | 대화 검색 | 같은 병원 이전 확인할 말 불러오기 |
+
+자동 목적지·도착은 구현 경로이며 제출 시연에서는 모의 입력입니다. 다음 예약 알림은 **서비스가 실행 중일 때** 날짜를 확인합니다. 차 시동으로 앱을 깨우는 기능은 없습니다.
+
+## 초기 검증과 사업 가설 — PLAN
+
+**확보 사용자 0명, 제휴·매출 0건**입니다. MAU는 한 달에 준비 또는 귀가 기록을 완료한 운전자 수로 정의하며 현재 실사용 측정값은 없습니다. 도달 10,000명 × 정기 동행 10% × 설치·동의 20% × 월 사용 50% = 100명은 모든 입력값이 미검증인 계산 예시입니다. 공공 병원동행 실적은 수요의 배경이지 차량 사용자 수나 전환율의 근거가 아닙니다.
+
+첫 검증은 정기 진료에 동행하는 운전자 **10가구 모집 계획**입니다. 보호자·운전자 커뮤니티에 참여자를 모집하고, 지역 병원동행 운영기관에는 별도 실증 협의를 제안할 계획이며 아직 모집·접촉을 완료하지 않았습니다. 동일한 허구의 진료 상황으로 음성 메모·메신저와 비교하고 순서를 바꾸어 시행합니다. 아래 수치는 모두 **실험 전 목표(PLAN)**입니다.
+
+| 지표 | 통과 기준(PLAN) |
+|---|---|
+| 도움 없이 준비→기록 확인 완료 | 10가구 중 8가구 이상 |
+| 사전 지정 질문 누락 | 개인별 기존 방식 대비 누락 감소의 중앙값 1개 이상 |
+| 인식 내용 정정 부담 | 방문당 정정 요청 중앙값 2회 이하; 잘못된 약·예약을 확인 없이 확정한 사례 0건 |
+| 다음 방문 재사용 | 90일 관찰 내 다음 진료가 도래한 가구 중 60% 이상; 대상 5가구 미만이면 판정 유보 |
+
+지불자는 병원동행 **운영기관**, 과금 단위는 **월 활성 차량**이라는 가설입니다. 기관 담당자 인터뷰로 도입·지원 비용과 지불 의향을 확인한 뒤 단가를 정합니다. 계약·가격은 미정입니다. [기획서와 근거](docs/plan/planning-doc.md)에 자세한 출처·검증 계획이 있습니다.
+
+## 소스에서 빌드하기
+
+노트북의 JDK/Android SDK, Pleos 이미지와 전용 Gradle 홈 준비는 [빌드 도구 안내](tools/laptop/README.md)를 따릅니다. 서버에서 복사한 뒤 노트북 저장소 루트에서 에뮬레이터 실행 전에 빌드합니다.
 
 ```sh
 LAPTOP_REPO=repo-visit tools/laptop/sync.sh
 ```
 
-노트북 `repo-visit` 루트에서 에뮬레이터 실행 전에 빌드:
-
 ```powershell
 powershell -NoProfile -ExecutionPolicy Bypass -File .\tools\laptop\gradle.ps1 :app:testDebugUnitTest :pleos-kit:testDebugUnitTest :app:assembleRelease
-```
-
-release 서명은 노트북의 `keystore.properties`에 준비합니다. 에뮬레이터 부팅·안정화 후 설치와 시연 시작:
-
-```powershell
 powershell -NoProfile -ExecutionPolicy Bypass -File .\tools\laptop\run-app.ps1 -Release -SkipBuild -Demo
 ```
 
-이미 설치했다면 ADB로 실행할 수도 있습니다.
+release 서명은 노트북 `keystore.properties`에서 설정합니다. 출력은 `app/build/outputs/apk/release/app-release.apk`입니다. 앱 이름의 원본은 [`app_name`](app/src/main/res/values/strings.xml)이며 변경 뒤 `python3 tools/laptop/update-label.py`로 문서 표시를 동기화합니다.
 
 ```sh
-adb shell am start -S --user current -n dev.carevisit.app/.MainActivity --es demo visit
-```
-
-**APK: [`apk/차곡_진료동행_release.apk`](apk/차곡_진료동행_release.apk)** (release 빌드, 서명됨. 개인 참가이며 파일명의 팀명 자리는 활동명 ‘차곡’). 직접 빌드하면 `app/build/outputs/apk/release/app-release.apk`에 나옵니다.
-
-## 테스트 환경과 설정
-
-- **Pleos Connect Emulator v2.1.0, API 34, 2560×1440 가로, 160dpi**. RAM 4GB, cold boot, GPU host를 사용합니다. portrait 분할 840×1184dp 레이아웃도 기기 확인 대상입니다.
-- 앱 최초 실행 시 차량 속도 권한을 허용합니다. 민감정보 수집 동의와 가족 공유 동의는 따로 받습니다. 긴 기록과 설정은 P이고 주행 제한이 해제된 때에만 표시합니다.
-- Virtual Console의 기어·차속·동승석 오른쪽 앞문 신호를 사용합니다. 좌석 점유나 미검증 시트 제어에 의존하지 않습니다.
-- 노트북 실행 도구는 `-no-audio`를 사용합니다. 시연의 응답은 가상 STT이며 실제 마이크 인식 성능을 나타내지 않습니다. TTS 요청은 실제 SDK를 사용합니다.
-- 내비 경로 계산에는 네트워크가 필요합니다. 가족 공유에는 노트북 relay와 같은 사설 Wi-Fi가 필요하며 외부 계정이나 클라우드 서버는 필요하지 않습니다.
-- LLM 문장부호 정리는 기본 꺼짐입니다. 켜도 기기 내 실행·8초 제한·내용 보존 검사에 실패하면 고정 템플릿을 사용합니다.
-
-Android SDK가 없는 서버에서는 순수 Kotlin 코어와 도구를 검사합니다.
-
-```sh
-./gradlew -p visit-core test
+./gradlew -p visit-core test adapterTest
 (cd tools/family && python3 -I -m unittest)
 (cd tools/laptop && python3 -I -m unittest)
 ```
 
-Android 컴파일, 실제 Pleos 목적지/도착 이벤트, 화면 규격, TTS/STT, 휴대폰 연결은 Windows 에뮬레이터에서 별도로 검증해야 합니다. [노트북 검증 목록](tools/laptop/README.md)을 확인하세요.
+## 실제 모드의 가족 relay
 
-## 시연 영상
-
-[`docs/demo/jinryo-donghaeng-demo.mp4`](docs/demo/jinryo-donghaeng-demo.mp4) (2분 14초, Pleos Connect Emulator와 Virtual Console 화면 녹화·자막, 소리 없음): 별도 동의 → 가는 길 음성 인터뷰 → 정문 하차와 진료 메모 → 시연용 가족 공유 동의 → 오는 길 브리핑 → 기록 완료와 가족 답장. 다시 만들기: `tools/video/spec.json`, `tools/video/make_video.py`.
-
-## 시연 모드 순서
-
-시연은 가상의 `○○대학교병원`, 호칭 `어머니`를 사용합니다. 실제 TTS 질문 뒤 정해진 대답이 들어오며 **“시연: 미리 녹음한 대답”**으로 표시됩니다. 시연 기록은 메모리에만 두고 실제 방문 기록과 분리합니다. 실제 기어·도어·주행 제한은 유지합니다.
-
-1. `--es demo visit`로 시작합니다. 서버의 `tools/laptop/demo-smoke.sh`는 앱 재시작 후 `CareVisit: demo started: visit` 로그를 확인합니다.
-2. 서버에서 `tools/vc/vc.sh up` 후 `tools/vc/vc.sh play tools/vc/visit-drive.vc`를 실행합니다. P→D, 40km/h로 1분 이상 움직이면 동의·가는 길 인터뷰가 시작됩니다. 주차 중 준비 시작도 가능합니다.
-3. **메모 완성 후** `visit-dropoff.vc`를 재생합니다. P와 동승석 문 열림으로 하차를 보여 줍니다. 주차 화면에서 메모·물어볼 것 목록을 확인하고, 공유한다면 가족 연결 동의와 이번 메모 전송 확인을 진행합니다.
-4. `visit-wait.vc`로 P를 유지합니다. 앱에서 주차 후 합류를 선택하고 가족 웹의 **“나왔어”**를 눌러 차량 안내를 확인합니다.
-5. P 화면의 시연 패널 **진료 끝**으로 진료 15분 경과를 만든 뒤 `visit-return.vc`를 재생합니다. D 전환 후 의사 말씀·약 변경·다음 예약·주의사항·다음에 확인할 것을 기록합니다. 읽어 준 브리핑을 이번에 공유할지 다시 확인합니다.
-6. 속도 0, P로 바꿔 브리핑과 기록을 확인합니다. 가족은 **“잘 받았어”**로 답할 수 있습니다. 시연 종료 시 실제 기록으로 돌아갑니다.
-
-시나리오 파일은 각각 `tools/vc/` 아래에 있습니다. 예: `tools/vc/vc.sh play tools/vc/visit-dropoff.vc`. 세부 단계·실제 15분 경계 시험·종료 방법은 [시연 도구 안내](tools/laptop/README.md)에 있습니다. 실제 기록이 보이는 화면은 캡처·녹화를 막고(FLAG_SECURE), 지어낸 기록만 보이는 시연 모드에서는 화면을 캡처·녹화할 수 있습니다.
-
-## 가족 relay 실행
-
-노트북에서 Python 3.9 이상을 준비하고 별도 PowerShell 창에서 실행합니다.
+**`--es demo off`로 실제 모드를 시작한 뒤** 별도로 검증하는 경로입니다. 노트북 Python 3.9 이상에서 실행합니다.
 
 ```powershell
 powershell -NoProfile -ExecutionPolicy Bypass -File .\tools\laptop\run-family-relay.ps1 -Port 8765
 ```
 
-또는 Python으로 직접 실행:
+직접 실행은 `python3 tools/family/relay.py --host 0.0.0.0 --port 8765`입니다. 차 설정은 `http://10.0.2.2:8765`, 같은 Wi-Fi의 휴대폰은 `http://<노트북 LAN IP>:8765/`를 엽니다. 차의 전체 가족 주소에서 `#` 뒤 32자리 연결 코드를 입력합니다. 짧은 8자리 코드는 연결 구별용입니다. Windows 방화벽은 사설 네트워크의 해당 TCP 포트만 허용합니다.
 
-```sh
-python3 tools/family/relay.py --host 0.0.0.0 --port 8765
-```
+relay는 승인된 글·정해진 상태·두 가지 답장만 다룹니다. **발화 원본 목록과 좌표를 보내지 않지만 승인된 글에 STT 인식문·개인정보가 포함될 수 있습니다. 비식별화 기능이 아닙니다.** 메모리 보관이며 최초 연결부터 24시간 후 만료하고 재시작하면 지웁니다. 실제 서비스에는 HTTPS와 사용자 인증이 필요합니다. [HTTP 계약](tools/family/PROTOCOL.md)을 확인하세요.
 
-차 설정의 relay 주소는 `http://10.0.2.2:8765`입니다. 휴대폰은 **같은 Wi-Fi**에서 `http://<노트북 LAN IP>:8765/`를 열고 차의 전체 가족 주소에서 `#` 뒤 32자리 연결 코드를 입력합니다. `/#<코드>` 공유 주소도 지원합니다. 차의 짧은 8자리 확인 코드는 연결 구별용이며 로그인에는 쓸 수 없습니다. 10.0.2.2는 휴대폰용 주소가 아닙니다. Windows 방화벽은 사설 네트워크의 해당 TCP 포트만 허용합니다.
+## 개인정보와 제품 범위
 
-relay는 승인된 메모·브리핑·정해진 상태와 두 가지 답장만 다룹니다. 위치나 대화 원문을 보내는 API는 없습니다. 메모리 보관이며 최초 연결부터 24시간 후 만료합니다(접근 시 즉시 차단, 미접속 메모리 정리는 최대 약 30초 지연). 재시작하면 지워집니다. 만료 후에는 차에서 가족 연결을 끄고 새로 연결하세요. **시연용 HTTP이므로 실제 서비스에는 HTTPS와 실제 사용자 인증이 필요합니다.** [HTTP 계약과 크기 제한](tools/family/PROTOCOL.md)을 확인하세요.
+- 건강정보 기록 동의, 가족 연결 동의, 매번의 메모·브리핑 전송 확인을 나누어 받습니다.
+- 실제 기록은 앱 전용 기기 저장소에 보관합니다. 기본 180일이며 설정 변경·만료·전체 삭제·동의 철회를 제공합니다. 원격 삭제 실패 때 relay 사본은 만료까지 남을 수 있습니다.
+- **현재 한 돌봄 대상용 프로필**입니다. 호칭 변경은 환자 전환이 아닙니다. 다른 대상은 기록·동의를 전체 삭제한 뒤 새로 시작합니다. 여러 대상 관리·보호자 앱·예약 연동은 확장 계획입니다.
+- ‘원문 보존’은 **STT 인식문과 발화 ID를 추적할 수 있다는 뜻**이며 음성 인식 정확성 보장이 아닙니다. 진단·중증도·처방·용량 판단을 만들지 않습니다. 약·예약은 확인이 필요합니다.
+- 실제 기록 화면은 캡처와 최근 앱 미리보기를 막고, 지어낸 시연 기록만 캡처·녹화할 수 있습니다. 가족 연결 코드를 아는 사람은 공유 내용을 볼 수 있습니다.
 
-## 개인정보와 의료 원칙
+## 구현 근거와 이용 조건
 
-- 건강 관련 민감정보를 기록하기 전에 별도의 명시적 동의를 받습니다. 가족 공유 동의만으로 건강정보 수집 동의를 대신하지 않습니다.
-- 방문 기록·발화 원문·동의는 기기 안 앱 전용 저장소에 보관합니다. 기본 보관 기간은 **180일**이며 설정에서 바꾸고, 시작·주기 검사·설정 변경 때 만료 기록을 삭제합니다. 전체 삭제는 기록과 동의를 함께 지웁니다.
-- 가족 공유는 설정 시 별도 동의에 더해 **메모/브리핑을 보낼 때마다 확인**합니다. 공유한 사본만 relay에서 제한된 기간 보관하며 원본 대화와 위치는 공유하지 않습니다. 공유 끄기는 relay 삭제도 요청합니다. 통신 실패 시 원격 사본이 즉시 삭제되지 않을 수 있고 TTL로 만료됩니다.
-- 실명 대신 호칭을 쓰며 코드·시연 데이터에 실제 인명을 넣지 않습니다. 실제 기록 화면은 캡처·최근 앱 미리보기를 막습니다(시연 모드 제외). 가족 공유 주소/코드를 아는 사람은 공유 내용을 볼 수 있으므로 신뢰하는 가족에게만 전달합니다.
-- 앱은 **의학적 판단을 하지 않습니다**. 슬롯은 발화 ID로 원문에 연결되고 고정 템플릿으로 완성됩니다. 기록의 정확성과 약·예약 내용은 의료진에게 확인합니다.
+[제품 사양](docs/product/SPEC.md) · [아키텍처](docs/ARCHITECTURE.md) · [SDK 검증 범위](docs/SDK_AUDIT.md) · [Pleos 래퍼](pleos-kit/README.md)
 
-## 구조와 구현 근거
-
-- [제품 사양](docs/product/SPEC.md): 상태 전이, 동의, 안전 원칙, 기준 시간
-- [아키텍처](docs/ARCHITECTURE.md): 순수 Kotlin `visit-core`, 단일 액터, 저장소·음성·가족 연결 포트, Android 어댑터와 UI
-- [SDK API 레퍼런스](docs/contest/03_SDK_API_레퍼런스/INDEX.md), [Pleos 래퍼](pleos-kit/README.md)
-- [가족 relay 계약](tools/family/PROTOCOL.md), [노트북 빌드·시연](tools/laptop/README.md)
-
-## 라이선스
-
-모든 권리 보유. 공모전 심사와 열람을 위해 공개한다 ([LICENSE](LICENSE)). 내장 데이터와 제3자 구성요소의 라이선스는 [NOTICE.md](NOTICE.md)에 있다. 개발 중 참고한 공모전·Pleos 문서 원문(`docs/contest/`)은 저작권자의 자료라 저장소에 넣지 않았다.
+모든 권리 보유. 공모전 심사와 열람을 위해 공개합니다([LICENSE](LICENSE)). 제3자 구성요소 고지는 [NOTICE.md](NOTICE.md)에 있습니다. 참고한 공모전·Pleos 문서 원문(`docs/contest/`)은 저작권자의 자료라 저장소에 넣지 않았습니다.

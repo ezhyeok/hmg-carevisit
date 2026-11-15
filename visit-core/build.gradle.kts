@@ -27,6 +27,7 @@ kotlin.sourceSets.getByName("adaptersTest").kotlin.apply {
     include("dev/carevisit/app/SecureWindowPolicy.kt", "dev/carevisit/app/SecureWindowPolicyTest.kt", "dev/carevisit/app/DemoPrivacyTest.kt")
     include("dev/carevisit/app/VisitRepositories.kt")
     include("dev/carevisit/app/FamilyConnections.kt", "dev/carevisit/app/DemoFamilyLinkTest.kt")
+    include("dev/carevisit/app/DemoTrip.kt", "dev/carevisit/app/DemoTripTest.kt")
 }
 configurations[adaptersTest.implementationConfigurationName].extendsFrom(configurations.testImplementation.get())
 configurations[adaptersTest.runtimeOnlyConfigurationName].extendsFrom(configurations.testRuntimeOnly.get())

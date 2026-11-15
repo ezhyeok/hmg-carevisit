@@ -148,7 +148,7 @@ class PresentationPolicyTest {
             assertNull(normal.demoLabel)
             assertTrue(normal.parked!!.demoSteps.isEmpty())
             val demo = ScreenModel.from(state(phase, demo = true), false)
-            assertEquals("시연: 미리 녹음한 대답", demo.demoLabel)
+            assertEquals("시연: 미리 정한 대답 · 가족 답장 모의", demo.demoLabel)
             assertEquals(UiCopy.DEMO_STEPS, demo.parked!!.demoSteps.map { it.label })
             assertEquals(1, demo.parked.demoSteps.count { it.current })
             assertTrue(demo.parked.demoSteps.count { it.enabled } <= 1)
@@ -171,7 +171,7 @@ class PresentationPolicyTest {
         fun label(session: Session, notice: String = "") = ScreenModel.from(initial.copy(archive = initial.archive.copy(session = session), notice = notice), false).parked!!.rendezvous!!.label
         val arrived = initial.archive.session.copy(arrivedAt = 100, rendezvous = Rendezvous.AT_GATE)
         assertEquals("정문 도착", label(arrived))
-        assertEquals("정문에서 내리셨어요", label(arrived.copy(droppedOff = true)))
+        assertEquals("동승석 문이 열렸어요", label(arrived.copy(droppedOff = true)))
         val parking = arrived.copy(parkingMode = true, rendezvous = Rendezvous.PARKING)
         assertEquals("주차 후 합류", label(parking))
         assertEquals("나왔어 · 수신", label(parking.copy(rendezvous = Rendezvous.OUTSIDE), "다른 안내"))

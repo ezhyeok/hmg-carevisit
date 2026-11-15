@@ -1,16 +1,21 @@
 {
   "date": "2026-11-15",
-  "pages_libreoffice": 11,
+  "pages_libreoffice": 10,
   "box7_heading_and_content_page_libreoffice": 6,
   "word_rendering": "not available; manual verification required",
   "template_sha256": "07be893d58b0e96ab7788f0d189d6829f0e59a2cee4bc18cb90ec37eeda2f5fd",
-  "docx_sha256": "e50fd1ce6123337ed282cd2031610f01446535c382d4cdc51e73423659e7c042",
+  "docx_sha256": "20a9ed72e0c08311f061141a228b11ddc1f7ceb494517291102728d5de3da41c",
   "boxes": 8,
   "xml": "all parts parse; check_layout.py passed",
-  "consent_section": "unchanged",
+  "consent_section": "part03 XML unchanged from template",
   "screenshots": 4,
-  "screenshot_height_cm": 7,
+  "screenshots_unchanged_from_head": true,
+  "screenshot_height_cm": 6.6,
   "figures": 2,
-  "new_verified_sources": 2,
-  "video_file_present": false
+  "new_verified_sources_this_round": 0,
+  "existing_verified_sources": 6,
+  "video_file_present": true,
+  "video_caption_segments_unchanged_timing": 11,
+  "laptop_unittest_passed": 12,
+  "runtime_tests_run_by_doc": false
 }

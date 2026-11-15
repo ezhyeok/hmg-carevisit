@@ -43,7 +43,7 @@ class VoiceAgent(private val output: SpeechOutput,private val input: SpeechInput
  * 메모에는 이 원문이 그대로 남으므로 의사에게 보여 줄 화면에서 읽을 수 있어야 한다.
  */
 object DemoAnswers {
-    fun answer(p: Prompt): String = when(p.kind) {
+    fun answer(p: Prompt): String = if(p.confirming) "맞아요" else when(p.kind) {
         AskKind.HEALTH,AskKind.PRE_OFFER,AskKind.POST_OFFER,AskKind.MED_CHANGED,AskKind.SHARE_MEMO,AskKind.SHARE_BRIEFING,AskKind.REMINDER,AskKind.ROUTE -> "네"
         AskKind.MORE_QUESTIONS -> "없어"
         AskKind.SLOT -> when(p.slot) {

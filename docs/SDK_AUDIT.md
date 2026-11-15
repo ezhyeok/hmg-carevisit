@@ -27,21 +27,27 @@ AAOS 표준은 복사한 kit의 검증된 `CarState`를 사용한다. `VehiclePr
 
 오디오 포커스의 플랫폼 API 패턴은 `docs/contest/02_Pleos_개발가이드/pleos-connect/vehicle-app-developer-guide/audio-focus-development-guide/`의 요청·반납·손실 처리 예제를 따른다. AudioAttributes의 assistant/speech 문맥, `AUDIOFOCUS_GAIN_TRANSIENT_MAY_DUCK`, 손실 시 TTS/STT 중단을 사용한다. Pleos TTS 서비스의 포커스와 중복될 가능성은 에뮬레이터에서 확인해야 한다.
 
-## 이 서버에서 확인한 것
+## 확인한 범위 — 2026-11-15
 
-- 코어의 상태 전이, 파서, 날짜, consent/retention, 원문 provenance, 공유 확인, polish guard, 재시작, 원자적 파일 저장: JVM 테스트.
-- SDK 메서드 선언과 권한: 로컬 API 레퍼런스 grep 및 기존 kit/쉼표 패턴 비교.
-- Android 런타임/SDK 신호는 이 서버에서 실행하지 않았다. API 선언 확인은 실제 이벤트 전달 검증과 다르다.
+- **LEAD 검증:** Android 빌드, release APK 설치·실행, Pleos Connect Emulator v2.1.0(API 34)의 방문 시연. 기존 ‘Android 컴파일 미수행’ 문구를 이 결과로 대체한다.
+- **시연 REAL:** TTS SDK 요청·완료, VC 입력의 Vehicle 도어 + AAOS 기어·속도, CarUxRestrictions 상세 화면 제한. `-no-audio`·무음 영상이므로 실제 가청 출력 품질을 검증했다는 뜻은 아니다.
+- **시연 MOCK:** 정해진 STT 답, 병원 목적지·도착, 체류시간 이동, DemoFamilyLink 메모리 가족 답장. 실제 STT/NaviHelper/HTTP relay 성공과 구분한다.
+- **코드·자동 검증:** 코어/어댑터 JVM 테스트, 로컬 SDK 선언·권한 대조. 이번 DOC 작업은 런타임 테스트를 새로 수행한 작업이 아니며 기존 테스트 개수를 재측정값으로 옮기지 않는다.
 
-## 노트북·에뮬레이터에서 반드시 확인할 것
+### 제출 파일 식별과 개선 소스의 경계
 
-1. **Android 컴파일:** app/pleos-kit debug와 release, Kotlin/Compose 코드, unit tests, manifest merge, release signing. 서버에 Android SDK가 없어 아직 수행하지 않았다.
-2. **내비:** 병원 목적지를 안내할 때 `DestinationInfo.name`의 실제 문자열과 좌표, remainDistance 단위/초기값, `onDestinationArrived` 전달. 길안내 종료+200m 후보가 단순 경로 취소를 잘 구분하는지. 미지원 시 주차 중 수동 도착을 사용한다.
-3. **차량:** VC의 P/D/차속/오른쪽 앞문과 앱 전이. capability 맵에서 해당 문 영역이 있는지. foreground/내비 전환, Car/Vehicle 서비스 죽음 이후 재연결과 fail-closed 화면.
-4. **음성:** TTS 완료, STT onReady 이후12초 창, -no-audio 이외 실제 마이크 입력. 시연은 scripted STT이므로 실제 인식 성공률을 입증하지 않는다. 전화/내비/Gleo의 포커스 손실 시 중단 및 수동 재시도. foreground 알림/재시작과 kit listener 해제 순서.
-5. **LLM:** 기존 emulator에서 ON_DEVICE가40초 무응답이었다. 새 앱에서8초 후 fallback, 늦은 callback 격리와 release를 확인한다. 응답 성공이나 품질을 전제로 하지 않는다.
-6. **가족:** emulator→10.0.2.2 relay→휴대폰, 연결 방화벽, 동의 전송 차단, 개별 승인 문구 일치, 나왔어/잘 받았어, 끊김·만료·철회 삭제. 운영용 HTTPS/계정 인증은 이 시연 relay 범위 밖이다.
-7. **UI/개인정보:** 840×1184dp/2560×1440, 라이트/다크, 글꼴 확대, driving regulation on/off, 키보드 닫힘, FLAG_SECURE가 캡처/시연 녹화에 미치는 영향. 화면만 막고 core 명령을 허용하지 않는지 확인한다.
-8. **파일:** 실제 Android app-private 파일의 temp+rename/fsync, 프로세스 강제 종료 직후 이어가기/폐기, 전체 삭제 후 재시작, retention 만료 시 startup purge.
+`apk/차곡_진료동행_release.apk`의 manifest를 직접 읽어 `dev.carevisit.app`, versionName `0.1.0`, versionCode `1`을 확인했다. 크기 41,847,536 bytes, SHA-256 `75f825691d12f2c2396fe7c6b4bd5c667591b61ff814af7ae81b7d4b840edef4` (2026-11-15 현재).
+
+이 APK를 추가한 커밋은 `b72ec40`이다. **APK를 만든 소스 커밋·서명 인증서 검증 결과는 이번 DOC 점검에서 확인하지 않았으므로 동일하다고 단정하지 않는다.** LEAD가 노트북에서 확인한 release 빌드·시연 결과와, 이번 개선 소스의 새 테스트 결과는 별도다. 개선 소스로 다시 빌드하면 APK 해시·서명·실행을 재확인해야 한다. 기존 녹화는 개선 전 APK를 사용하므로 추가된 귀가 대기·정정 UX의 실행 증거가 아니다.
+
+## 남은 실제 경로 확인
+
+1. **내비:** 실제 병원 목적지 이름·좌표, 남은 거리, 도착 콜백과 목적지 일치, 경로 취소를 실제 도착으로 오인하지 않는지. 제출 시연에서는 모의 입력이다.
+2. **차량:** 서비스 단절·재연결과 모름 상태의 화면 제한. 문 열림은 하차 확정이 아니며 시동으로 앱을 깨우는 알림도 없다. 예약 확인은 서비스 실행 중이다.
+3. **음성:** 실제 마이크의 STT onReady·듣기 창·인식 오류·전화/내비 포커스 중단. TTS 연결 성공과 실제 들리는 출력은 별도로 확인한다.
+4. **LLM:** 기본 꺼짐. 선택적 기기 내 실행의 성공률·품질은 미검증이다. 시간 초과·검사 거부 때 고정 서식을 사용한다. 구체적 보존 규칙은 현재 PolishGuard와 SPEC 기준으로 검증한다.
+5. **가족:** 실제 모드(`demo=off`)에서 emulator→10.0.2.2 relay→휴대폰 왕복, 만료·철회 삭제·통신 실패. 승인 글에는 STT 인식문·개인정보가 들어갈 수 있으며 비식별화가 아니다. 운영용 HTTPS/계정 인증은 별도다.
+6. **UI/저장:** 가로·840×1184dp 분할·라이트/다크·글꼴 확대, 프로세스 종료 복구, 실제 파일 원자 교체, 전체 삭제·보관 만료. 실제 모드는 FLAG_SECURE, 시연은 캡처 가능하다.
+7. **개선 소스 재검증:** 새 APK 설치→현재 사용자 CAR_SPEED 허용→`am start -S --es demo visit`→VC 순서 전체. 귀가 질문 대기·약/예약 확인·새 진료 준비 등 이번 소스 변경이 이전 제출 APK에도 있다고 가정하지 않는다.
 
 시트 slide/heater/seat occupancy, 차량 위치 기반 귀가 감지, POI 검색, 자동119전화, 꺼진 차를 깨우는 알림은 구현하거나 검증했다고 주장하지 않는다. 자세한 제품 경계는 SPEC을 따른다.
