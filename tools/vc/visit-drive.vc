@@ -1,0 +1,9 @@
+# 준비: 시연 앱을 켜고 가족 공유는 원할 때 별도 동의. 이 파일은 차량 신호만 바꾼다.
+door fr close
+gear Park
+speed 0
+sleep 3
+gear Drive
+speed 40
+# 1분 실제 주행 뒤 첫 질문. TTS와 scripted 답변이 끝나면 메모가 완성된다.
+sleep 65

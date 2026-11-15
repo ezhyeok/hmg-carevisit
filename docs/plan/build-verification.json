@@ -1,0 +1,11 @@
+{
+  "date": "2026-11-15",
+  "pages": 10,
+  "template_sha256": "07be893d58b0e96ab7788f0d189d6829f0e59a2cee4bc18cb90ec37eeda2f5fd",
+  "docx_sha256": "2bdb405428623083ca729d3dd953a3f7c55922a1f76af3e80cd9ca40b42eea8f",
+  "boxes": 8,
+  "xml": "all parts parse",
+  "consent_section": "unchanged",
+  "screenshots": 0,
+  "checks": "control metadata preserved; no email or GitHub URL in boxes; individual selected, division blank; no test-count data dependency"
+}

@@ -1,0 +1,30 @@
+# Android / Gradle
+.gradle/
+.kotlin/
+build/
+local.properties
+.idea/
+*.iml
+captures/
+.externalNativeBuild/
+.cxx/
+.DS_Store
+
+# 서명 키와 비밀값 (절대 커밋 금지)
+*.jks
+*.keystore
+keystore.properties
+secrets.properties
+.env
+
+# 접수양식(개인정보·서명 포함)과 개인 메모는 저장소에 올리지 않는다
+/contest-application-consent.docx
+
+# Python bytecode
+__pycache__/
+.local/
+*.hprof
+
+# 기획서 미리보기(LibreOffice 생성물)
+/docs/plan/preview/
+build/

@@ -1,0 +1,104 @@
+<!doctype html>
+<html lang="ko">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>가족 진료 기록</title>
+<style>
+:root { color-scheme: light dark; font: 22px/1.6 system-ui,sans-serif; }
+* { box-sizing: border-box; }
+body { max-width: 780px; margin: auto; padding: 20px; background: #f4f7f6; color: #172a26; }
+h1 { font-size: 1.55rem; margin-bottom: 8px; } h2 { font-size: 1.15rem; margin: 0; }
+p { white-space: pre-wrap; overflow-wrap: anywhere; }
+article,form { padding: 18px; margin: 20px 0; border: 2px solid #658278; border-radius: 18px; }
+button { display: block; width: 100%; min-height: 72px; margin: 16px 0; padding: 12px; border: 0; border-radius: 16px; background: #245d50; color: white; font: inherit; font-weight: bold; cursor: pointer; }
+button:disabled { opacity: .5; cursor: default; }
+button:focus-visible,input:focus-visible { outline: 4px solid #d48800; outline-offset: 4px; }
+input { width: 100%; min-width: 0; min-height: 60px; padding: 10px; font: inherit; border: 2px solid #658278; border-radius: 8px; }
+small { font-size: 18px; } [hidden] { display: none !important; }
+@media(prefers-color-scheme:dark) { body { background: #121b1a; color: #f1f5f3; } button { background: #347963; } }
+</style>
+</head>
+<body>
+<header><h1>함께 기억하는 진료</h1><p>차에서 확인해 보낸 내용만 표시됩니다.<br>의료 판단을 하지 않습니다.</p></header>
+<form id="pairing" autocomplete="off">
+<label for="code">전체 연결 코드</label>
+<p><small>차의 전체 가족 주소에서 # 뒤 32자리를 붙여 넣으세요. 짧은 확인 코드는 사용할 수 없어요. 공유 주소로 열어도 됩니다.</small></p>
+<input id="code" type="text" minlength="32" maxlength="32" pattern="[0-9a-fA-F]{32}" autocapitalize="none" spellcheck="false" required aria-describedby="pair-note">
+<button type="submit">가족 화면 연결</button>
+<small id="pair-note">코드는 이 탭에서만 사용하며 저장하지 않습니다.</small>
+</form>
+<p id="connection" role="status" aria-live="polite">연결 코드를 입력해 주세요.</p>
+<main id="messages" aria-label="가족에게 공유한 기록"></main>
+<button id="outside" disabled>나왔어</button><small>진료를 마치고 정문에 도착했을 때 눌러 주세요.</small>
+<button id="received" disabled>잘 받았어</button>
+<p id="sent" role="status" aria-live="polite"></p>
+<button id="disconnect" hidden>이 화면에서 연결 지우기</button>
+<footer><p><small>최초 연결 후 최대 24시간 보관됩니다. 차에서 공유를 끄면 relay 삭제를 요청합니다. 연결이 끊기면 만료 때 지워집니다. 공유 주소나 코드를 가진 사람은 내용을 볼 수 있습니다. 새로고침하면 주소를 다시 열거나 코드를 다시 입력해 주세요.</small></p>
+<p><small>같은 Wi-Fi에서 사용하는 시연용 화면입니다. 실제 서비스에는 HTTPS와 별도의 사용자 인증이 필요합니다.</small></p></footer>
+<script>
+let token=location.hash.slice(1).toLowerCase();
+history.replaceState(null,'',location.pathname);
+const connection=document.getElementById('connection'), messages=document.getElementById('messages');
+const outside=document.getElementById('outside'), received=document.getElementById('received'), sent=document.getElementById('sent');
+const pairing=document.getElementById('pairing'), code=document.getElementById('code'), disconnect=document.getElementById('disconnect');
+let old='', timer, busy=false, generation=0, expiresAt=0;
+function clearContent() { messages.replaceChildren(); old=''; outside.disabled=true; received.disabled=true; }
+async function api(path,body) {
+ const controller=new AbortController(), timeout=setTimeout(()=>controller.abort(),6000);
+ try {
+  const r=await fetch(path,{method:body?'POST':'GET',headers:{'Authorization':'Bearer '+token,'Content-Type':'application/json'},body:body?JSON.stringify(body):undefined,cache:'no-store',credentials:'omit',signal:controller.signal});
+  if(!r.ok) throw new Error(r.status===404||r.status===410?'연결이 없거나 만료됐어요. 차에서 가족 연결을 끄고 새로 연결해 주세요.':'연결을 확인할 수 없어요. 코드를 확인해 주세요.');
+  return await r.json();
+ } catch(e) { if(e.name==='AbortError'||e instanceof TypeError) throw new Error('연결이 끊겼어요. 같은 Wi-Fi와 노트북 relay를 확인해 주세요.'); throw e; }
+ finally { clearTimeout(timeout); }
+}
+async function update() {
+ clearTimeout(timer);
+ if(!token) return;
+ const current=generation;
+ try {
+  if(!/^[0-9a-f]{32}$/.test(token)) throw new Error('가족 주소의 # 뒤 32자리 연결 코드를 입력해 주세요.');
+  const data=await api('/api/session');
+  if(current!==generation) return;
+  expiresAt=Date.now()+data.remainingSeconds*1000;
+  connection.textContent='연결됨 · 남은 시간 약 '+Math.ceil(data.remainingSeconds/60)+'분';
+  pairing.hidden=true; disconnect.hidden=false;
+  const value=JSON.stringify(data.messages);
+  if(value!==old) {
+   messages.replaceChildren();
+   for(const m of data.messages) {
+    const a=document.createElement('article'),h=document.createElement('h2'),p=document.createElement('p');
+    h.textContent={memo:'진료 메모',briefing:'진료 후 브리핑',status:'동행 상태'}[m.kind]; p.textContent=m.text;
+    a.append(h,p); messages.append(a);
+   }
+   old=value;
+  }
+  outside.disabled=busy; received.disabled=busy;
+ } catch(e) { if(current===generation) { connection.textContent=e.message; clearContent(); pairing.hidden=false; } }
+ finally { if(current===generation && token) timer=setTimeout(update,5000); }
+}
+async function reply(text) {
+ if(busy) return;
+ busy=true; outside.disabled=true; received.disabled=true;
+ const current=generation;
+ try {
+  await api('/api/reply',{text});
+  if(current===generation) sent.textContent='알림을 보냈어요: '+text+' · 차량이 연결되면 확인합니다.';
+ } catch(e) { if(current===generation) { sent.textContent=e.message; clearContent(); } }
+ finally { if(current===generation) { busy=false; clearTimeout(timer); timer=setTimeout(update,3000); } }
+}
+pairing.addEventListener('submit',e=>{
+ e.preventDefault(); generation++; token=code.value.trim().toLowerCase(); code.value=''; busy=false; sent.textContent=''; clearContent(); update();
+});
+disconnect.onclick=()=>{
+ generation++; clearTimeout(timer); token=''; code.value=''; busy=false; expiresAt=0; clearContent(); sent.textContent='';
+ pairing.hidden=false; disconnect.hidden=true; connection.textContent='이 화면의 연결을 지웠어요. relay 삭제는 차의 가족 연결 끄기를 사용하세요.';
+};
+outside.onclick=()=>reply('나왔어'); received.onclick=()=>reply('잘 받았어');
+// Clear old health text before refreshing a tab resumed after its absolute TTL.
+document.addEventListener('visibilitychange',()=>{ if(!document.hidden) { if(Date.now()>=expiresAt) clearContent(); update(); } });
+if(token) update();
+</script>
+</body>
+</html>

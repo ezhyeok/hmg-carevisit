@@ -1,0 +1,5 @@
+# 앱에서 시연 패널의 '진료 끝'으로 15분 진료 완료를 누른 뒤 실행.
+door fr close
+sleep 2
+gear Drive
+speed 30

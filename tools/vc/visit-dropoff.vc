@@ -1,0 +1,6 @@
+# 메모 완성 후 실행. demo에서는 P+동승석 문 열림이 도착/하차를 알린다.
+speed 0
+gear Park
+sleep 2
+door fr open
+sleep 3
