@@ -88,12 +88,10 @@ def ppr(before=0, after=80, line=264, jc=None, ind_left=None, ind_hanging=None, 
         keep_next=False, keep_lines=False, num=None, border_left=None, border_bottom=None,
         shading=None, page_break_before=False, widow=True):
     parts = []
-    if keep_next:
-        parts.append('<w:keepNext/>')
-    if keep_lines:
-        parts.append('<w:keepLines/>')
-    if page_break_before:
-        parts.append('<w:pageBreakBefore/>')
+    # Explicit false breaks Word's inherited keep chains inside nested form tables.
+    parts.append('<w:keepNext w:val="%d"/>' % bool(keep_next))
+    parts.append('<w:keepLines w:val="%d"/>' % bool(keep_lines))
+    parts.append('<w:pageBreakBefore w:val="%d"/>' % bool(page_break_before))
     if not widow:
         parts.append('<w:widowControl w:val="0"/>')
     if num:

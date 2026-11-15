@@ -160,6 +160,29 @@ def fig_flow():
     return svg(1020, 410, b)
 
 
+def fig_interview():
+    b = [T(30, 39, "질문은 고정하고, 답은 말씀 그대로", 25, 700),
+         T(30, 70, "의료 판단 없이 기록을 만드는 구조 · 예시는 허구의 시연 발화", 16, fill=INK3)]
+    cards = [
+        (30, "고정 질문 칸", ["가는 길: 불편한 곳 · 언제부터", "양상 · 약 · 물어볼 것", "오는 길: 의사 말씀 · 약 변경", "예약 · 주의 말씀 · 다음 질문"]),
+        (375, "발화 원문 + ID", ["발화 u1: ‘사흘전부터’", "언제부터 칸 → u1 + 원문", "해석한 날짜에도 발화 ID 연결", "모호한 날짜는 ‘확인 필요’"]),
+        (720, "고정 서식으로 완성", ["가는 길 → 진료 메모", "오는 길 → 진료 브리핑", "추측하거나 의료 내용을 덧붙이지 않음", "LLM 없이도 결과 완성"]),
+    ]
+    for x, title, lines in cards:
+        b += [R(x, 95, 310, 174, 14, SURF, LINE), T(x+18, 130, title, 21, 700),
+              ML(x+18, 163, lines, 15, 25, fill=INK2)]
+    b += [L(344, 181, 367, 181, ACCENT, 2, marker="arrA"),
+          L(689, 181, 712, 181, ACCENT, 2, marker="arrA"),
+          L(875, 272, 875, 303, ACCENT, 2, marker="arrA"),
+          R(30, 310, 1000, 145, 14, TINT, LINE),
+          T(50, 343, "선택: 기기 안 LLM 문장 정돈 → 결정적 검사", 21, 700, ACCENT_D),
+          T(50, 375, "기본 꺼짐 · 문자/숫자 토큰의 내용과 순서 동일 · 신체 표현 보존 · 길이 ≤ 원문의 1.5배", 16, fill=INK2),
+          T(50, 403, "통과: 문장부호·띄어쓰기 정돈만 채택   /   거부·오류·8초 초과: 고정 서식 결과 사용", 16, fill=INK2),
+          T(50, 433, "설계값 근거: safePolish · PolishGuard. 진단·중증도 판단·약/용량 제안은 하지 않음.", 14, fill=INK3),
+          T(30, 490, "가족 공유는 별도 연결 동의 + 보낼 글마다 확인. 발화 원본 목록과 위치는 보내지 않음.", 17, 600)]
+    return svg(1060, 520, b)
+
+
 def render(name, fn, outdir):
     svg_path = os.path.join(outdir, name + ".svg")
     png_path = os.path.join(outdir, name + ".png")
@@ -171,7 +194,7 @@ def render(name, fn, outdir):
 
 def build_all(outdir):
     os.makedirs(outdir, exist_ok=True)
-    return [render("fig-flow", fig_flow, outdir)]
+    return [render("fig-flow", fig_flow, outdir), render("fig-interview", fig_interview, outdir)]
 
 
 if __name__ == "__main__":

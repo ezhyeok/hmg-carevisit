@@ -23,3 +23,8 @@ python3 -I tools/plan/build_docx.py --preview docs/plan/preview
 사용자 지시에 따라 읽기 전용 쉼표 저장소의 `build_docx.py`, `blocks.py`, `ooxml.py`, `render_docx.py`, `render_md.py`, `icons.py`, `figures.py`를 복사했다. 기존 OOXML·렌더러와 SVG primitive를 재사용하고 이 앱의 본문과 흐름도를 작성했다. 쉼표 시뮬레이션·시험 개수 로더·화면 목업은 제거했다. 테스트 개수는 적지 않았으며 집계 파일이 없어도 문서가 생성된다.
 
 재생성은 출력 docx를 덮어쓴다. 개인 정보나 서명을 넣기 전 최종 생성하고, 작성한 제출본은 별도로 보관한다.
+
+
+## Word 레이아웃 회귀 확인
+
+빌드 후 `python3 -I tools/plan/check_layout.py`로 OOXML 분할 설정을 확인한다. 조사·수정 내용은 [word-layout.md](word-layout.md). 현재 4개 캡처는 높이 7cm로 넣으며, 가로 캡처도 `screen_max_h_cm` 설정을 따른다. 생성기 상한은 8cm다. 영상은 녹화 중으로 기재했으므로 녹화 완료 뒤 `content.py`의 상태를 갱신한다. Word 최종 배치는 제출 PC에서 확인한다.

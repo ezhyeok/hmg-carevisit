@@ -36,3 +36,18 @@
 | LLM.generateContent(prompt: String, listener: ResultListener), Mode.ON_DEVICE | `LLM/ai.pleos.playground.llm.md`, `LLM/ai.pleos.playground.llm.constant.md` |
 
 AAOS `VehiclePropertyIds.GEAR_SELECTION`, `PERF_VEHICLE_SPEED`, `CarUxRestrictions`는 Pleos API라고 쓰지 않았다. `pleos-kit`의 `CarState`·`UxRestrictionWatcher` 사용과 대조했다.
+
+
+## 후속 보강: 추가 확인한 공식 자료
+
+열람일: **2026-11-15**. 아래 두 페이지는 검색 결과 요약에 의존하지 않고 web open으로 HTML 본문과 게시일을 확인했다.
+
+| 기획서 번호 | 자료 / 게시일 | 실제 본문에서 확인한 내용 | URL |
+|---|---|---|---|
+| [5] | 경기도, 1인가구 병원안심동행 이용실적 / 2025-12-10 | 2025년 10월 말 총 10,452건의 세부 실적: 병원동행 4,928건, 유사서비스 연계 267건, 사전상담 5,257건. 도내 11개 시군 운영. | https://gnews.gg.go.kr/briefing/brief_gongbo_view.do?BS_CODE=s017&number=68642&subject_Code=BO01 |
+| [6] | 서울특별시, 동행서비스 전면 확대 / 2026-04-12 | 기존 병원안심동행을 건강동행으로 개편. 의료진 설명 전달·의사소통 보조를 업무 범위로 명시. 월 최대 10회 제공. | https://www.seoul.go.kr/news/news_report.do?nttNo=456058&srchCtgry=475 |
+
+- [5]에서는 실제 동행과 상담을 분리해 기획 배경에 사용했다. 전체 서비스 건수를 실제 병원 이동 횟수처럼 쓰지 않는다. 경기도와 개별 시군의 실적도 더하지 않는다.
+- [6]은 ‘들은 말씀 정리·전달’이라는 기획 방향과 공공 동행 실증 업무를 뒷받침한다. 앱이 보호자 부담을 얼마나 줄였다는 효과 근거로 쓰지 않는다. 월 10회는 한도이지 실측 빈도가 아니다.
+- MAU의 도달 10,000명·수요 10%·설치/동의 20%·월 사용 50%는 계속 명시적 가정이다. [5]의 11개 시군은 실증 채널 탐색 근거일 뿐 차량 보급량이나 확보한 제휴 수가 아니다. 수요 존재는 [1][3][5], 반복 방문 방향은 [3]과 연결하고 해당 비율을 도출한 것처럼 쓰지 않았다. 설치 전환은 외부 근거 없음으로 표시했다.
+- 성남 사례 기사는 검색 요약에 수치가 있었으나 이번에 연 본문에서 그 수치를 찾지 못해 채택하지 않았다. 노인실태조사 관련 검색 결과도 본문 수치 대조를 하지 않아 추가하지 않았다.

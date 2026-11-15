@@ -38,9 +38,9 @@ def _spacer(pt=4):
              X.rpr(size=2)))
 
 
-def render_heading(b):
+def render_heading(b, keep_next=True):
     return X.para(X.run(b.text, size=11, bold=True, color=X.INK),
-                  before=220, after=90, line=252, keep_next=True, keep_lines=True,
+                  before=220, after=90, line=252, keep_next=keep_next, keep_lines=True,
                   border_left=(X.ACCENT, 24, 6), ind_left=150, page_break_before=b.page_break)
 
 
@@ -76,7 +76,7 @@ def render_table(b, width=X.BOX_CONTENT_DXA):
         a = 'center' if align[i] == 'center' else ('right' if align[i] == 'right' else None)
         hdr.append(X.cell(_cell_paras(h, b.size, bold=True, color=X.INK, align=a), widths[i],
                           fill=X.SURF2, valign="center"))
-    rows.append(X.row(hdr, header=True))
+    rows.append(X.row(hdr, header=True, cant_split=False))
     for r_i, r in enumerate(b.rows):
         cells = []
         fill = X.ACCENT_TINT if r_i in b.highlight_rows else None
@@ -139,7 +139,7 @@ def render_keynumbers(b, width=X.BOX_CONTENT_DXA):
     return t + _spacer(4)
 
 
-def _image_para(media, path, width_cm, alt, keep_next=True, jc='center', max_h_cm=None, outline=None):
+def _image_para(media, path, width_cm, alt, keep_next=False, jc='center', max_h_cm=None, outline=None, caption=None):
     w_px, h_px = X.image_size(path)
     if max_h_cm:
         width_cm = min(width_cm, max_h_cm * w_px / float(h_px))
@@ -147,8 +147,11 @@ def _image_para(media, path, width_cm, alt, keep_next=True, jc='center', max_h_c
     cy = int(cx * h_px / float(w_px))
     rid, part = media.add(path)
     did = media.docpr()
-    return X.para(X.image_run(rid, did, os.path.basename(part), cx, cy, alt, outline=outline),
-                  before=60, after=40, line=240, jc=jc, keep_next=keep_next)
+    runs = X.image_run(rid, did, os.path.basename(part), cx, cy, alt, outline=outline)
+    if caption is not None:
+        runs += '<w:r><w:br/></w:r>' + X.inline(caption, size=8, color=X.INK2)
+    return X.para(runs, before=60, after=40, line=240, jc=jc,
+                  keep_next=keep_next, keep_lines=caption is not None)
 
 
 def _caption(text):
@@ -159,7 +162,8 @@ def render_figure(b, media, resolve):
     target = resolve(b.key)
     if isinstance(target, list):           # screenshot grid
         return render_screens(target, b, media)
-    return _image_para(media, target, b.width_cm, b.alt or b.caption) + _caption(b.caption)
+    # Keep only this bounded image/caption pair together, never the following table.
+    return _image_para(media, target, b.width_cm, b.alt or b.caption, keep_next=True) + _caption(b.caption)
 
 
 def render_screens(shots, b, media, width=X.BOX_CONTENT_DXA):
@@ -177,13 +181,12 @@ def render_screens(shots, b, media, width=X.BOX_CONTENT_DXA):
         cells = []
         for i, (path, label) in enumerate(pending):
             w_cm = (colw[i] - 160) / 567.0
-            cells.append(X.cell(_image_para(media, path, w_cm, label, keep_next=True, max_h_cm=b.screen_max_h_cm,
-                                            outline="C7C9CE") +
-                                X.para(X.inline(label, size=8, color=X.INK2), before=0, after=60, line=240,
-                                       jc='center'), colw[i]))
+            cells.append(X.cell(_image_para(media, path, w_cm, label, keep_next=False,
+                                            max_h_cm=min(b.screen_max_h_cm, 8.0), outline="C7C9CE",
+                                            caption=label), colw[i]))
         for i in range(len(pending), ncol):
             cells.append(X.cell(X.empty_para(), colw[i]))
-        rows.append(X.row(cells))
+        rows.append(X.row(cells, cant_split=False))
         pending.clear()
 
     for path, label in shots:
@@ -191,10 +194,9 @@ def render_screens(shots, b, media, width=X.BOX_CONTENT_DXA):
         if w > h * 1.2:
             flush()
             w_cm = (width - 200) / 567.0
-            rows.append(X.row([X.cell(_image_para(media, path, w_cm, label, keep_next=True, max_h_cm=10.5,
-                                                  outline="C7C9CE") +
-                                      X.para(X.inline(label, size=8, color=X.INK2), before=0, after=60,
-                                             line=240, jc='center'), width, gridspan=ncol)]))
+            rows.append(X.row([X.cell(_image_para(media, path, w_cm, label, keep_next=False,
+                                                  max_h_cm=min(b.screen_max_h_cm, 8.0), outline="C7C9CE",
+                                                  caption=label), width, gridspan=ncol)], cant_split=False))
         else:
             pending.append((path, label))
             if len(pending) == ncol:
@@ -203,7 +205,9 @@ def render_screens(shots, b, media, width=X.BOX_CONTENT_DXA):
     t = X.table(rows, colw, borders={'top': None, 'left': None, 'bottom': None, 'right': None,
                                      'insideH': None, 'insideV': None},
                 cell_margins=(40, 80, 40, 80))
-    return t + _caption(b.caption_screens or b.caption)
+    # A normal paragraph before the grid breaks the preceding keep chain. Each
+    # capture and its caption share one bounded paragraph; no keepNext into another row.
+    return _caption(b.caption_screens or b.caption) + t + _spacer(4)
 
 
 def render_annotated(b, media, resolve, width=X.BOX_CONTENT_DXA):
@@ -256,9 +260,12 @@ def render_note(b):
 
 def render_blocks(blocks, media, resolve):
     out = []
-    for b in blocks:
+    for i, b in enumerate(blocks):
         if isinstance(b, H):
-            out.append(render_heading(b))
+            # The first paragraph must not pull the form row forward. Nor should a
+            # heading chain into a nested figure table in Word.
+            before_figure = i + 1 < len(blocks) and isinstance(blocks[i + 1], Figure)
+            out.append(render_heading(b, keep_next=i > 0 and not before_figure))
         elif isinstance(b, P):
             out.append(render_p(b))
         elif isinstance(b, Bullets):

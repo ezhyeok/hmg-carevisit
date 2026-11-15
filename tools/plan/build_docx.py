@@ -48,7 +48,7 @@ ASSETS = os.path.join(PLAN_DIR, "assets")
 SCREENS = os.path.join(ASSETS, "screens")
 MD_OUT = os.path.join(PLAN_DIR, "planning-doc.md")
 
-FIGURES = {"flow": "fig-flow.png"}
+FIGURES = {"flow": "fig-flow.png", "interview": "fig-interview.png"}
 
 
 
@@ -171,8 +171,9 @@ def fill_box(doc, section, inner_xml):
     assert heading.startswith('%d.' % section.number), (section.tag, heading)
 
     head = doc[tbl:s]
+    # Long boxes may start with a small fragment. Keep the one-line boxes atomic.
     if section.number not in (1, 8):
-        head = head.replace('<w:cantSplit/>', '', 1)   # long boxes may break across pages
+        head = re.sub(r'<w:cantSplit\b[^>]*/>', '<w:cantSplit w:val="0"/>', head)
     return doc[:tbl] + head + new + doc[e:]
 
 

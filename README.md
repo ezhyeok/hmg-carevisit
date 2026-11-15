@@ -54,6 +54,10 @@ Android SDK가 없는 서버에서는 순수 Kotlin 코어와 도구를 검사�
 
 Android 컴파일, 실제 Pleos 목적지/도착 이벤트, 화면 규격, TTS/STT, 휴대폰 연결은 Windows 에뮬레이터에서 별도로 검증해야 합니다. [노트북 검증 목록](tools/laptop/README.md)을 확인하세요.
 
+## 시연 영상
+
+[`docs/demo/jinryo-donghaeng-demo.mp4`](docs/demo/jinryo-donghaeng-demo.mp4) (2분 14초, Pleos Connect Emulator와 Virtual Console 화면 녹화·자막, 소리 없음): 별도 동의 → 가는 길 음성 인터뷰 → 정문 하차와 진료 메모 → 시연용 가족 공유 동의 → 오는 길 브리핑 → 기록 완료와 가족 답장. 다시 만들기: `tools/video/spec.json`, `tools/video/make_video.py`.
+
 ## 시연 모드 순서
 
 시연은 가상의 `○○대학교병원`, 호칭 `어머니`를 사용합니다. 실제 TTS 질문 뒤 정해진 대답이 들어오며 **“시연: 미리 녹음한 대답”**으로 표시됩니다. 시연 기록은 메모리에만 두고 실제 방문 기록과 분리합니다. 실제 기어·도어·주행 제한은 유지합니다.

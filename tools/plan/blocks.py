@@ -63,7 +63,7 @@ class Figure:
     alt: str = ""
     caption_screens: Optional[str] = None   # used instead of caption when real screenshots replace a mockup
     columns: int = 2                        # screenshot grid columns for portrait images
-    screen_max_h_cm: float = 9.5            # tallest a screenshot in the grid may be (shrinks a full grid onto one page)
+    screen_max_h_cm: float = 8.0            # tallest a screenshot in the grid may be (shrinks a full grid onto one page)
 
 
 @dataclass

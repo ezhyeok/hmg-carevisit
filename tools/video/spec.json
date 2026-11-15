@@ -1,0 +1,22 @@
+{"segments": [
+ {"type": "title", "lines": ["진료동행 — 병원 가는 길엔 준비, 오는 길엔 기억", "부모님을 모시고 병원에 가는 차 안에서, 차가 정해진 순서로 묻고 진료 메모와 브리핑을 만든다", "Pleos Connect Emulator 2.1.0 + Virtual Console 화면 녹화 · 소리 없음 · 시연 모드(지어낸 기록)"], "dur": 5},
+ {"type": "clip", "file": "build/video/clips/vr1.mp4", "start": 0, "end": 10, "speed": 1,
+  "caption": "처음 한 번: 건강 정보는 따로 동의를 받는다", "sub": "무엇을, 어디에(이 기기 안), 얼마 동안(180일) 보관하는지 먼저 알린다. 언제든 모두 지울 수 있다"},
+ {"type": "clip", "file": "build/video/clips/vr1.mp4", "start": 10, "end": 72, "speed": 8, "badge": "8배속",
+  "caption": "병원 가는 길 · ○○대학교병원으로 출발 (기어 D, 시속 40km)", "sub": "내비 목적지가 병원이면 진료 동행으로 보고, 1분쯤 달려 운전이 안정된 뒤 묻는다"},
+ {"type": "clip", "file": "build/video/clips/vr1.mp4", "start": 72, "end": 120, "speed": 2, "badge": "2배속",
+  "caption": "차가 정해진 순서로 묻는다: 어디가, 언제부터, 어떨 때, 약, 물어볼 것", "sub": "주행 중 화면은 지금 질문 하나와 예·아니요·넘어가기뿐. 대답은 말 그대로 칸에 남는다 (시연은 미리 정한 대답, 음성은 녹화되지 않음)"},
+ {"type": "clip", "file": "build/video/clips/vr1.mp4", "start": 120, "end": 127, "speed": 1,
+  "caption": "달리는 동안에는 메모를 펼치지 않는다", "sub": "주행 제한(CarUxRestrictions)이 켜져 있으면 짧은 안내만. 차가 서면 메모를 보여 준다"},
+ {"type": "clip", "file": "build/video/clips/vr2.mp4", "start": 6, "end": 30, "speed": 1.5, "badge": "1.5배속",
+  "caption": "정문 하차 · 기어 P에서 동승석 문이 열리면 ‘정문에서 다시 만나요’", "sub": "주차 화면의 진료 메모를 진료실에서 의사에게 그대로 보여 준다. 앱은 의학적 판단을 하지 않는다"},
+ {"type": "clip", "file": "build/video/clips/vr2.mp4", "start": 30, "end": 44, "speed": 1.5, "badge": "1.5배속",
+  "caption": "가족 공유는 따로 동의한다 (시연용 가족 연결, 외부 전송 없음)", "sub": "위치와 대화 원문은 보내지 않는다. 보낼 때마다 한 번 더 확인한다"},
+ {"type": "clip", "file": "build/video/clips/vr2.mp4", "start": 44, "end": 106, "speed": 2, "badge": "2배속",
+  "caption": "오는 길 · 의사 선생님 말씀을 같은 방식으로 기록한다", "sub": "의사 말씀, 약 변경, 검사·다음 예약(‘2주 뒤 오전 10시’ → 11월 29일), 주의, 다음에 확인할 것. 읽어 준 뒤 ‘가족에게 보낼까요?’"},
+ {"type": "clip", "file": "build/video/clips/vr2.mp4", "start": 106, "end": 138, "speed": 4, "badge": "4배속",
+  "caption": "기록 완료 · 운전 중에는 한 줄만", "sub": "‘진료 기록 완료 · 주차 후 확인하세요’"},
+ {"type": "clip", "file": "build/video/clips/vr2.mp4", "start": 138, "end": 150, "speed": 1,
+  "caption": "주차하면 오늘의 기록: 브리핑, 다음 예약, 가족의 답장(‘잘 받았어’)", "sub": "다음 진료 때는 지난번 ‘다음에 확인할 것’을 먼저 묻는다"},
+ {"type": "title", "lines": ["진료동행", "판단하지 않고, 들은 말을 정리한다 · 기기 안에 저장 · 공유는 동의한 것만", "Pleos NaviHelper · Vehicle(기어·도어) · TTS/STT · AAOS CarUxRestrictions"], "dur": 4}
+]}
