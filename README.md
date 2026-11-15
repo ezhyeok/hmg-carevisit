@@ -99,3 +99,7 @@ relay는 승인된 메모·브리핑·정해진 상태와 두 가지 답장만 �
 - [아키텍처](docs/ARCHITECTURE.md): 순수 Kotlin `visit-core`, 단일 액터, 저장소·음성·가족 연결 포트, Android 어댑터와 UI
 - [SDK API 레퍼런스](docs/contest/03_SDK_API_레퍼런스/INDEX.md), [Pleos 래퍼](pleos-kit/README.md)
 - [가족 relay 계약](tools/family/PROTOCOL.md), [노트북 빌드·시연](tools/laptop/README.md)
+
+## 라이선스
+
+모든 권리 보유. 공모전 심사와 열람을 위해 공개한다 ([LICENSE](LICENSE)). 내장 데이터와 제3자 구성요소의 라이선스는 [NOTICE.md](NOTICE.md)에 있다. 개발 중 참고한 공모전·Pleos 문서 원문(`docs/contest/`)은 저작권자의 자료라 저장소에 넣지 않았다.
