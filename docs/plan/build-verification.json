@@ -1,20 +1,20 @@
 {
   "date": "2026-11-15",
-  "round": "business and differentiation evidence pass",
-  "source_reference": "fa214cc09acdd9966b7975430535ac0275580300",
-  "pages_libreoffice": 10,
-  "target_word_max_pages": 11,
-  "word_rendering": "not available; unchanged formatting and screenshot size; LibreOffice preview inspected",
-  "box7_heading_and_content_page_libreoffice": 6,
-  "docx_sha256": "8f65c7e8908db17141d510cf8501e73a31a5f7842c938465b345b7ac78896a04",
+  "round": "design and problem-framing overhaul",
+  "source_reference": "ce8cd0a43e5b2c345b0d2c42350031755f102185",
+  "pages_libreoffice": 11,
+  "target_word_max_pages": 13,
+  "word_rendering": "not available; LibreOffice page PNGs inspected; every figure <=8cm; nested rows splittable",
+  "box7_heading_and_content_page_libreoffice": 7,
+  "docx_sha256": "9cf9ae602ff2371e2fb308a47f3ccacdfb5ece54c024ce6b5cfd1156a5624d86",
   "template_sha256": "07be893d58b0e96ab7788f0d189d6829f0e59a2cee4bc18cb90ec37eeda2f5fd",
   "consent_section": "part03 XML unchanged from template",
   "screenshots": 4,
   "screenshots_unchanged_from_head": true,
   "screenshot_height_cm": 5.2,
   "figures": 2,
-  "existing_verified_sources": 6,
-  "new_verified_sources_this_round": 3,
+  "existing_verified_sources": 9,
+  "new_verified_sources_this_round": 0,
   "total_sources": 9,
   "unit_economics_hypotheses": {
     "monthly_price": 20000,
@@ -25,5 +25,11 @@
     "vehicles_to_cover_assumed_fixed_cost": 107
   },
   "runtime_tests_run": false,
-  "checks": "layout, label, arithmetic, source numbering/date, XML, consent, screenshots, DOC scope, whitespace"
+  "checks": "layout (failed nested row lock first, then passed), all figures <=8cm, source numbering/date, arithmetic unchanged, XML, unchanged consent/screenshots, DOC scope, whitespace",
+  "figure_descriptions": [
+    "hero comparison",
+    "interview structure"
+  ],
+  "annotated_screenshots": 1,
+  "storyboard_frames": 4
 }

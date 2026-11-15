@@ -49,6 +49,10 @@ for tag, control in boxes.items():
             caption = siblings[siblings.index(image_p) + 1]
             assert caption.tag == W + 'p'
             assert not enabled(caption.find('w:pPr/w:keepNext', NS)), (tag, 'image chain continues')
+# Every embedded figure stays below half a usable page, including the new hero
+# and annotated driving capture. New nested block types must remain splittable.
+for control in boxes.values():
+    assert all(int(s.get('cy')) <= 8 * 360000 for s in control.findall('.//wp:extent', NS)), 'figure exceeds 8cm'
 box7 = boxes['reference_link']
 shots = box7.findall('.//wp:extent', NS)
 assert len(shots) == 4, 'expected the four supplied captures'
@@ -57,4 +61,4 @@ text = ''.join(box7.itertext())
 assert 'docs/demo/jinryo-donghaeng-demo.mp4' in text and 'apk/' in text
 for control in boxes.values():
     assert 'github.com/' not in ''.join(control.itertext()).lower()
-print('PASS: 8 box starts; splittable long-box/nested rows; bounded image-caption pairs; 4 captures <=8cm; video/APK references; XML parses.')
+print('PASS: 8 box starts; splittable long-box/nested rows; bounded image-caption pairs; all figures <=8cm; 4 captures <=8cm; video/APK references; XML parses.')

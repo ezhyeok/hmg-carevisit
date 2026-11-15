@@ -224,7 +224,7 @@ def render_annotated(b, media, resolve, width=X.BOX_CONTENT_DXA):
         notes.append(X.para(X.inline(desc, size=9, color=X.INK2), before=0, after=0, line=250, ind_left=300))
     left = _image_para(media, path, b.image_width_cm, b.alt or b.caption, keep_next=False, outline="C7C9CE")
     t = X.table([X.row([X.cell(left, widths[0], valign="center"),
-                        X.cell(''.join(notes), widths[1], valign="center", margins=(80, 200, 80, 60))])],
+                        X.cell(''.join(notes), widths[1], valign="center", margins=(80, 200, 80, 60))], cant_split=False)],
                 widths, borders={'top': None, 'left': None, 'bottom': None, 'right': None,
                                  'insideH': None, 'insideV': None}, cell_margins=(40, 60, 40, 60))
     return t + _caption(b.caption)
@@ -235,12 +235,12 @@ def render_storyboard(b, width=X.BOX_CONTENT_DXA):
     rows = []
     title = (X.run(b.title, size=10, bold=True, color=X.ACCENT) +
              X.run("   " + b.subtitle, size=8.5, color=X.INK3))
-    rows.append(X.row([X.cell(X.para(title, before=0, after=0, line=252, keep_next=True), width,
+    rows.append(X.row([X.cell(X.para(title, before=0, after=0, line=252, keep_next=False), width,
                               fill=X.ACCENT_TINT, gridspan=3, valign="center", margins=(80, 120, 80, 120))],
-                      header=True))
+                      header=True, cant_split=False))
     hdr = ["단계", "차·앱이 하는 일", "사용자가 듣고 보는 것"]
     rows.append(X.row([X.cell(_cell_paras(h, 8, bold=True, color=X.INK2), widths[i], fill=X.SURF2,
-                              valign="center") for i, h in enumerate(hdr)], header=True))
+                              valign="center") for i, h in enumerate(hdr)], header=True, cant_split=False))
     for i, (step, action, user) in enumerate(b.steps):
         mark = CIRCLED[i] if i < len(CIRCLED) else str(i + 1)
         step_xml = X.para(X.run(mark + " ", size=9, bold=True, color=X.ACCENT) + X.inline(step, size=8.5, bold=True),
@@ -264,7 +264,7 @@ def render_blocks(blocks, media, resolve):
         if isinstance(b, H):
             # The first paragraph must not pull the form row forward. Nor should a
             # heading chain into a nested figure table in Word.
-            before_figure = i + 1 < len(blocks) and isinstance(blocks[i + 1], Figure)
+            before_figure = i + 1 < len(blocks) and isinstance(blocks[i + 1], (Figure, Annotated, Storyboard, KeyNumbers))
             out.append(render_heading(b, keep_next=i > 0 and not before_figure))
         elif isinstance(b, P):
             out.append(render_p(b))

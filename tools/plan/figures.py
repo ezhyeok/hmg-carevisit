@@ -138,6 +138,42 @@ def icon(name, x, y, size, fill=INK):
             % (icons.PATHS[name], fill, x, y, s))
 
 
+def fig_hero():
+    """Before/after journey, using the shared accent, rounded cards and quiet labels."""
+    from content import APP_NAME
+    b = [T(24, 40, "질문은 진료 전에. 들은 말은 잊기 전에.", 28, 700),
+          T(24, 68, "부모님을 모시고 가는 날 · 운전하는 자녀와 결과를 기다리는 가족", 16, fill=INK3),
+          R(24, 91, 356, 290, 18, SURF, LINE),
+          R(420, 91, 636, 290, 18, TINT, LINE),
+          T(44, 126, "오늘 · 기억에 맡긴 대화", 22, 700, INK2),
+          T(442, 126, APP_NAME + " · 왕복을 잇는 기록", 22, 700, ACCENT_D),
+          L(390, 234, 409, 234, ACCENT, 2, marker="arrA")]
+    before = [
+        ("짧은 진료", "진료 5분 미만 응답 55.0% [2]"),
+        ("놓친 질문", "물어볼 말이 진료 뒤에 떠오른다"),
+        ("다시 하는 설명", "형제에게 전화로 들은 말을 되풀이한다"),
+    ]
+    for i, (title, desc) in enumerate(before):
+        y = 151 + i * 72
+        b += [R(42, y, 320, 62, 10, WHITE),
+              T(56, y+24, title, 18, 700), T(56, y+48, desc, 14, fill=INK3)]
+    after = [
+        ("가는 길", "음성 인터뷰", "불편한 곳 · 약 · 물어볼 말"),
+        ("진료", "진료 메모", "준비한 질문을 확인"),
+        ("오는 길", "진료 브리핑", "들은 말을 고정 칸에 기록"),
+        ("가족", "승인한 글 공유", "같은 내용을 함께 확인"),
+    ]
+    b.append(L(459, 168, 459, 339, ACCENT, 2))
+    for i, (stage, title, desc) in enumerate(after):
+        y = 149 + i * 55
+        b += [R(482, y, 554, 45, 10, WHITE), C(459, y+22, 14, ACCENT),
+              T(459, y+28, str(i+1), 16, 700, WHITE, "middle"),
+              T(498, y+28, stage, 16, 600, ACCENT_D),
+              T(590, y+28, title, 18, 700), T(760, y+28, desc, 14, fill=INK2)]
+    b += [T(24, 414, "목적지·기어·도어로 대화 시점 연결  ·  주행 중 음성 중심  ·  의료 판단 없음  ·  가족 공유는 확인 후", 16, 600, INK2)]
+    return svg(1080, 440, b)
+
+
 def fig_flow():
     from content import APP_NAME
     b = [T(30, 42, APP_NAME + " · 병원에 가는 날의 대화를 잇다", 25, 700),
@@ -194,7 +230,7 @@ def render(name, fn, outdir):
 
 def build_all(outdir):
     os.makedirs(outdir, exist_ok=True)
-    return [render("fig-flow", fig_flow, outdir), render("fig-interview", fig_interview, outdir)]
+    return [render("fig-hero", fig_hero, outdir), render("fig-flow", fig_flow, outdir), render("fig-interview", fig_interview, outdir)]
 
 
 if __name__ == "__main__":

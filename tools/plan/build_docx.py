@@ -48,7 +48,7 @@ ASSETS = os.path.join(PLAN_DIR, "assets")
 SCREENS = os.path.join(ASSETS, "screens")
 MD_OUT = os.path.join(PLAN_DIR, "planning-doc.md")
 
-FIGURES = {"flow": "fig-flow.png", "interview": "fig-interview.png"}
+FIGURES = {"hero": "fig-hero.png", "flow": "fig-flow.png", "interview": "fig-interview.png"}
 
 
 
@@ -67,6 +67,8 @@ def screenshots():
 
 
 def resolve_png(key):
+    if key == "driving":
+        return next(path for path, _ in screenshots() if os.path.basename(path).startswith("1_"))
     if key == "screens":
         shots = screenshots()
         if shots:
