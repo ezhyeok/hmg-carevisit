@@ -26,6 +26,7 @@ kotlin.sourceSets.getByName("adaptersTest").kotlin.apply {
     include("dev/hmg/pleoskit/SpeechContracts.kt")
     include("dev/carevisit/app/SecureWindowPolicy.kt", "dev/carevisit/app/SecureWindowPolicyTest.kt", "dev/carevisit/app/DemoPrivacyTest.kt")
     include("dev/carevisit/app/VisitRepositories.kt")
+    include("dev/carevisit/app/FamilyConnections.kt", "dev/carevisit/app/DemoFamilyLinkTest.kt")
 }
 configurations[adaptersTest.implementationConfigurationName].extendsFrom(configurations.testImplementation.get())
 configurations[adaptersTest.runtimeOnlyConfigurationName].extendsFrom(configurations.testRuntimeOnly.get())

@@ -122,7 +122,18 @@ private enum class SettingsConfirm { DELETE, WITHDRAW, FAMILY_ON, FAMILY_OFF }
                 } else VisitButton("수집·보관 동의 안내", Modifier.fillMaxWidth()) { VisitStore.send(Event.RequestConsent) }
                 VisitButton("전체 삭제", Modifier.fillMaxWidth()) { confirm = SettingsConfirm.DELETE }
             }
-            VisitCard {
+            if (state.demo) VisitCard {
+                SectionTitle("시연 가족 연결")
+                StatusLabel("시연용 메모리 연결 · 외부 전송 없음")
+                SupportingText("실제 가족 주소는 사용하지 않아요. 시연을 끝내면 연결과 답장이 사라져요.")
+                if (family) {
+                    StatusLabel("시연 공유 동의함")
+                    VisitButton("시연 가족 연결 끄기", Modifier.fillMaxWidth()) { confirm = SettingsConfirm.FAMILY_OFF }
+                } else {
+                    VisitButton("시연 가족 공유 동의", Modifier.fillMaxWidth(), enabled = health) { confirm = SettingsConfirm.FAMILY_ON }
+                    if (!health) SupportingText("먼저 민감정보 수집·보관에 동의해 주세요.")
+                }
+            } else VisitCard {
                 SectionTitle("가족 연결")
                 StatusLabel(if (family) "별도 동의함" else "공유 꺼짐")
                 SupportingText("확인한 기록과 정문·주차 상태를 전해요.")
@@ -183,7 +194,10 @@ private enum class SettingsConfirm { DELETE, WITHDRAW, FAMILY_ON, FAMILY_OFF }
                 Text("지운 기록은 되돌릴 수 없어요.", style = VisitType.Strong)
             }
         }
-        SettingsConfirm.FAMILY_ON -> Confirmation("가족 공유에 동의할까요?", "별도로 동의하고 연결", { confirm = null }, {
+        SettingsConfirm.FAMILY_ON -> if (state.demo) DemoFamilyConsentDialog(
+            onDismiss = { confirm = null },
+            onConfirm = { confirm = null; VisitStore.commands.trySend(AppCommand.DemoFamilyConsent) },
+        ) else Confirmation("가족 공유에 동의할까요?", "별도로 동의하고 연결", { confirm = null }, {
             confirm = null
             val token = ByteArray(16).also { SecureRandom().nextBytes(it) }.joinToString("") { "%02x".format(it.toInt() and 255) }
             VisitStore.send(Event.FamilyConsent(true, token))
@@ -195,7 +209,7 @@ private enum class SettingsConfirm { DELETE, WITHDRAW, FAMILY_ON, FAMILY_OFF }
         SettingsConfirm.FAMILY_OFF -> Confirmation("가족 연결을 끌까요?", "연결 끄기", { confirm = null }, {
             confirm = null; VisitStore.send(Event.FamilyConsent(false))
         }) {
-            Text("가족 공유 동의를 철회하고 연결된 가족 화면의 기록 삭제를 요청합니다.")
+            Text(if (state.demo) "시연 공유 동의를 철회하고 시연 가족 화면의 기록을 지웁니다." else "가족 공유 동의를 철회하고 연결된 가족 화면의 기록 삭제를 요청합니다.")
             Text("이 기기의 진료 기록은 그대로 남아요.")
         }
         null -> Unit
@@ -206,4 +220,14 @@ private enum class SettingsConfirm { DELETE, WITHDRAW, FAMILY_ON, FAMILY_OFF }
     OutlinedTextField(value = value, onValueChange = onChange, label = { Text(label, style = VisitType.Small) },
         singleLine = true, isError = error, textStyle = VisitType.Body,
         shape = androidx.compose.foundation.shape.RoundedCornerShape(24.dp), modifier = Modifier.fillMaxWidth().heightIn(min = 100.dp))
+}
+
+
+@Composable internal fun DemoFamilyConsentDialog(onDismiss: () -> Unit, onConfirm: () -> Unit) {
+    Confirmation("시연 가족 공유에 동의할까요?", "시연 공유에 동의", onDismiss, onConfirm) {
+        Text("시연용 메모리 연결 · 외부 전송 없음", style = VisitType.Strong)
+        Text(Policy.FAMILY_LINE)
+        Text("실제 가족에게 보내지 않아요. 시연용 가족 화면에서 ‘잘 받았어’, ‘나왔어’ 답장을 보내요.")
+        Text("시연을 끝내면 연결과 기록이 사라져요. 보낼 내용은 따로 확인한 뒤에만 전달합니다.")
+    }
 }

@@ -2,6 +2,14 @@
 
 ## UI 계약
 
+### 시연 가족 연결 (2026-11-15 추가)
+
+- 시연 시작 시 네트워크 없는 `DemoFamilyLink`가 자동으로 붙는다. 건강/공유 동의는 자동 승인하지 않는다. 실제 relay 주소·토큰·동의는 가져오지 않는다.
+- 시연 공유 동의 화면에서 `Policy.FAMILY_LINE`과 “시연용 메모리 연결 · 외부 전송 없음”을 표시하고 사용자가 동의한 뒤 `VisitStore.commands.trySend(AppCommand.DemoFamilyConsent)`를 보낸다. `state.demo && state.fullScreen && state.archive.consent.healthAt != null`일 때만 제공한다. 실제 성공 여부는 기존 `archive.consent.familyAt != null`로 확인한다. 토큰 생성은 서비스 담당이다.
+- 동의 뒤 기존 `VisitStore.send(Event.ShareMemo)` / `VisitStore.send(Event.ShareBriefing)` 사용. 동의 버튼 자체는 메모/브리핑을 보내지 않는다. 코어가 내용을 읽고 개별 yes 확인을 받은 뒤에만 전송한다. 전송 완료는 기존 `notice = "가족 화면에 전달했어요."`, 약 3~4초 뒤 자동 답장 `"잘 받았어"`는 코어가 `"가족이 잘 받았대요"`로 읽고 notice에 표시한다. UI는 시연 가족 답장임을 구분해서 표시한다.
+- 정문 답장 단계: `VisitStore.commands.trySend(AppCommand.DemoFamilyOutside)`. 시연 + 건강/가족 동의 + `AT_HOSPITAL` + `session.parkingMode`일 때만 동작한다. 먼저 기존 `Event.ParkingMode`를 사용한다. 같은 메모리 연결에서 `"나왔어"`를 수신하고 기존 `session.rendezvous == OUTSIDE` 및 `notice`/TTS를 갱신한다. `AppCommand.Next`도 AT_HOSPITAL에서 이 답장을 요청한 뒤 체류 15분을 진행한다.
+- 두 DemoFamily 명령은 실제 모드에서 무시한다. 연결 해제/삭제는 기존 `Event.FamilyConsent(false)` / `Event.DeleteAll`; 시연 종료 시 전송 내역과 대기 답장이 폐기된다. UI 전용 상태 필드는 추가하지 않는다.
+
 2026-11-15 CORE→UI 인계. 이 절의 기존 심볼은 호환성을 유지한다. 추가·변경은 `docs/coord/requests.md`에 알린다.
 
 - 화면 진입점: `dev.carevisit.app.ui.VisitScreen(state: ViewState, platformRestricted: Boolean)`. `MainActivity`가 서비스의 `VisitStore.state`와 독립 `UxRestrictionWatcher`를 lifecycle-aware collect하여 전달한다.
@@ -71,6 +79,7 @@
 - `VisitNaviKit`: 기존 `NaviKit`을 통해 목적지, guiding, 도착 이벤트, 저장된 좌표의 route를 제공한다. SDK 타입은 kit 밖 앱 코드에 노출하지 않는다. 조회는 20초 간격이며 kit의 직렬 요청 규칙을 유지한다.
 - `VoiceAgent`: kit `SpeechInput/Output` + optional focus. demo도 실제 TTS를 끝까지 실행한 뒤 허구 STT 답을 반환한다.
 - `HttpFamilyLink`: 명시적 id/kind/text JSON만 쓴다. redirects를 따르지 않아 bearer token을 다른 호스트로 넘기지 않는다. JSON 응답은 128KiB로 제한하고 전체 데이터 serializer를 사용하지 않는다.
+- `FamilyConnection`은 app 안에서 `FamilyLink`에 poll/close를 더한 인터페이스다. 서비스는 세션마다 `FamilyLinks.open`으로 실제 HTTP 또는 시연 메모리 연결 중 하나를 고르고, 동일 인스턴스를 코어 전송과 응답 조회에 쓴다. 시연에서 실제 어댑터 factory는 호출하지 않는다. `DemoFamilyLink`는 승인 DTO와 고정 답장만 보관하며 중복 전송 ID는 한 번만 처리한다. 종료/모드 전환 시 poll job을 취소·합류하고 기존 코어를 취소한 뒤 close로 메모리를 비운다. 이전 세션의 결과를 새 코어에 주입하지 않는다.
 - `LlmKit`: LLM SDK 2.1.3.2 ON_DEVICE, 별도 스레드, 요청별 listener/instance, 8초 timeout. 늦은 callback은 취소된 요청을 되살리지 않는다. 서버 등록·키·자유 의료 생성은 없다.
 
 `UxRestrictionWatcher`와 서비스 제한을 모두 확인한다. 모름을 false로 바꾸지 않는다. 라이브 기록의 screenshots/recents 유출을 막기 위해 Activity는 FLAG_SECURE를 사용한다. 시연에서만 캡처를 허용한다. 시연 진입은 새 화면 트리를 만든 뒤 두 번의 Compose frame 경계를 기다려 이전 실제 화면을 교체하고 차단을 해제한다. 시연 종료는 차단 설정 호출이 완료된 뒤 실제 기록을 화면에 전달한다. 전환 중 mode가 바뀌면 기존 LaunchedEffect는 취소된다. 실제 에뮬레이터의 화면 합성·녹화 타이밍은 노트북 검증 대상이다.
@@ -90,7 +99,7 @@
 기술 Q&A의 핵심은 “음성 인식 오류를 의료 추론으로 보정하지 않는다”, “동의·저장 성공 뒤에만 효과를 실행한다”, “공유 포트가 전체 기록/위치를 받을 수 없다”, “LLM의 실패가 제품을 멈추지 않는다”, “차량 신호를 모르면 상세 화면을 잠근다”이다. 어떤 SDK가 실제로 전달하는지는 단위 테스트로 입증할 수 없으며 [SDK_AUDIT.md](SDK_AUDIT.md)의 미검증 목록과 구분한다.
 
 
-Android 없는 어댑터 검증: `./gradlew -p visit-core adapterTest`는 실제 `app/src/main`의 VoiceAgent/UiContract/HttpFamilyLink, 실제 app/src/test의 release/voice/store/HTTP 테스트, kit의 Android 없는 SpeechContracts를 별도 JVM source set으로 컴파일한다. Android API stub을 만들거나 Activity/Compose를 검증한 것처럼 취급하지 않는다. 이 작업은 core의 runtime 의존성이나 APK 소스셋을 바꾸지 않는다.
+Android 없는 어댑터 검증: `./gradlew -p visit-core adapterTest`는 실제 `app/src/main`의 VoiceAgent/UiContract/HttpFamilyLink/FamilyConnections 및 시연 저장소·화면 정책, 실제 app/src/test의 release/voice/store/HTTP/시연 개인정보·가족 통합 테스트, kit의 Android 없는 SpeechContracts를 별도 JVM source set으로 컴파일한다. Android API stub을 만들거나 Activity/Compose를 검증한 것처럼 취급하지 않는다. 이 작업은 core의 runtime 의존성이나 APK 소스셋을 바꾸지 않는다.
 
 ## 최종 CORE 검증 기록 (2026-11-15)
 

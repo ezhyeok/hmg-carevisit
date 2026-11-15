@@ -35,7 +35,7 @@ class VoiceAgentTest {
     @Test fun demoStillSpeaksRealQuestionAndDoesNotUseMicrophone()=runTest {
         val out=Output();val input=Input();val a=VoiceAgent(out,input,true){}
         val job=async{a.ask(Prompt(1,AskKind.SLOT,"언제부터요?",Slot.DURATION)){}}
-        runCurrent();assertEquals(listOf("언제부터요?"),out.spoken);assertFalse(job.isCompleted);advanceTimeBy(1801);assertEquals("사흘전부터",job.await());assertFalse(input.called)
+        runCurrent();assertEquals(listOf("언제부터요?"),out.spoken);assertFalse(job.isCompleted);advanceTimeBy(1801);assertEquals("사흘 전부터",job.await());assertFalse(input.called)
     }
     @Test fun longMemoIsReadCompletely()=runTest {val out=Output();val a=VoiceAgent(out,Input(),false){};val text="검사 결과 말씀 ".repeat(100);a.say(text);assertEquals(text,out.spoken.joinToString(""));assertTrue(out.spoken.all{it.length<=160})}
 }

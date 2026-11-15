@@ -38,3 +38,18 @@ private fun previewState(phase: Phase = Phase.MEMO): ViewState {
 
 @Preview(name = "Settings · dark", widthDp = 840, heightDp = 1184, uiMode = Configuration.UI_MODE_NIGHT_YES)
 @Composable private fun SettingsPreview() { VisitTheme { SettingsScreen(previewState()) } }
+
+private fun completedPreviewState(): ViewState {
+    val state = previewState(Phase.DONE)
+    val visit = state.archive.session.visit!!.copy(complete = true)
+    return state.copy(archive = state.archive.copy(consent = Consent(healthAt = 1),
+        session = state.archive.session.copy(visit = visit, briefing = Templates.briefing(visit), rendezvous = Rendezvous.OUTSIDE)),
+        notice = "시연: 진료 15분 경과 · Virtual Console에서 기어 D로 출발하세요.")
+}
+
+@Preview(name = "Completed · split · demo unpaired", widthDp = 840, heightDp = 1184)
+@Preview(name = "Completed · full · dark", widthDp = 2560, heightDp = 1440, uiMode = Configuration.UI_MODE_NIGHT_YES)
+@Composable private fun CompletedPreview() { VisitScreen(completedPreviewState(), false) }
+
+@Preview(name = "Completed · driving", widthDp = 840, heightDp = 1184)
+@Composable private fun CompletedDrivingPreview() { VisitScreen(completedPreviewState(), true) }

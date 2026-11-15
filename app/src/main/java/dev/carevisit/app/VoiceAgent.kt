@@ -37,15 +37,20 @@ class VoiceAgent(private val output: SpeechOutput,private val input: SpeechInput
     }
     override fun stop() { focusLost=true;output.stop(); input.stop();focus.release() }
 }
+/**
+ * 시연용 대답. 에뮬레이터 Pleos STT(ON_DEVICE)는 띄어쓰기를 지킨 문장을 주고 끝 글자만 잘리는 일이 있었다
+ * ("화장실 급해" → '화장실 급', CLAUDE.md STT). 그래서 띄어쓰기는 실제처럼 두고, 끝이 잘린 대답 하나('아파' → '아프')만 섞는다.
+ * 메모에는 이 원문이 그대로 남으므로 의사에게 보여 줄 화면에서 읽을 수 있어야 한다.
+ */
 object DemoAnswers {
     fun answer(p: Prompt): String = when(p.kind) {
         AskKind.HEALTH,AskKind.PRE_OFFER,AskKind.POST_OFFER,AskKind.MED_CHANGED,AskKind.SHARE_MEMO,AskKind.SHARE_BRIEFING,AskKind.REMINDER,AskKind.ROUTE -> "네"
         AskKind.MORE_QUESTIONS -> "없어"
         AskKind.SLOT -> when(p.slot) {
             Slot.CONTINUITY -> "지난번이랑 비슷해"
-            Slot.SYMPTOM -> "무릎이좀아프"
-            Slot.DURATION -> "사흘전부터"
-            Slot.DETAIL -> "계단 올라갈때 더 그래"
+            Slot.SYMPTOM -> "오른쪽 무릎이 좀 아프"
+            Slot.DURATION -> "사흘 전부터"
+            Slot.DETAIL -> "계단 올라갈 때 더 그래"
             Slot.MEDICATION -> "전에 먹던 약 그대로 먹어"
             Slot.QUESTION -> "산책은 해도 되는지 물어볼래"
             Slot.DOCTOR -> "선생님이 검사 결과는 다음 진료 때 같이 보자고 하셨어"

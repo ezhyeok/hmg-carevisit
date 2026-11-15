@@ -32,13 +32,19 @@ data class HospitalHistory(val hospital: String, val entries: List<HistoryEntry>
 data class RendezvousModel(val label: String, val detail: String)
 data class DemoStep(val label: String, val current: Boolean, val enabled: Boolean, val complete: Boolean)
 data class ConsentVisibility(val showHealth: Boolean, val canPair: Boolean, val canShare: Boolean)
+enum class TodayCard { BRIEFING, MEMO, RENDEZVOUS }
+enum class BriefingShareAction { NONE, CONNECT_DEMO, CONFIRM }
+data class CompletionModel(val appointment: String?, val actionLabel: String)
 data class ParkedModel(
     val memo: MemoModel?, val briefing: BriefingModel?, val history: List<HospitalHistory>,
     val rendezvous: RendezvousModel?, val consent: ConsentVisibility, val demoSteps: List<DemoStep>,
+    val completion: CompletionModel?, val notice: String?, val cards: List<TodayCard>,
+    val shareAction: BriefingShareAction,
 )
 data class ScreenModel(
     val glance: Boolean, val title: String, val question: String, val progress: String, val voice: String,
     val promptId: Long?, val answers: List<AnswerButton>, val demoLabel: String?, val parked: ParkedModel?,
+    val showVoiceStart: Boolean, val showVoiceStatus: Boolean,
 ) {
     companion object {
         fun from(s: ViewState, platformRestricted: Boolean): ScreenModel {
@@ -81,6 +87,8 @@ data class ScreenModel(
                 ),
                 demoLabel = UiCopy.DEMO.takeIf { s.demo },
                 parked = if (glance) null else parkedModel(s),
+                showVoiceStart = prompt == null && session.phase != Phase.DONE,
+                showVoiceStatus = session.phase != Phase.DONE || prompt != null || s.voice != VoiceState.IDLE,
             )
         }
     }
@@ -113,7 +121,8 @@ private fun shortQuestion(session: Session): String = session.prompt?.let { p ->
         }
     }
 } ?: when (session.phase) {
-    Phase.IDLE, Phase.DONE -> "음성으로 ‘병원 가는 길’이라고 말씀하세요"
+    Phase.IDLE -> "음성으로 ‘병원 가는 길’이라고 말씀하세요"
+    Phase.DONE -> "진료 기록 완료 · 주차 후 확인하세요"
     Phase.WAIT_SAFE -> "잠시 뒤 진료 준비를 시작해요"
     Phase.MEMO -> "진료 메모는 주차 후 확인하세요"
     Phase.AT_HOSPITAL -> "정문에서 다시 만나요"
@@ -122,7 +131,7 @@ private fun shortQuestion(session: Session): String = session.prompt?.let { p ->
     else -> "말씀으로 기록을 남겨요"
 }
 private fun parkedQuestion(session: Session): String {
-    val prompt = session.prompt ?: return shortQuestion(session)
+    val prompt = session.prompt ?: return if (session.phase == Phase.DONE) "오늘 진료 기록을 마쳤어요" else shortQuestion(session)
     return when (prompt.kind) {
         AskKind.HEALTH -> "건강 정보를 이 기기에 보관할까요?"
         AskKind.SHARE_MEMO, AskKind.SHARE_BRIEFING -> "가족에게 보낼까요?"
@@ -134,16 +143,42 @@ private fun parkedModel(s: ViewState): ParkedModel {
     val health = a.consent.healthAt != null
     val family = health && a.consent.familyAt != null
     val visit = a.session.visit.takeIf { health }
+    val memo = visit?.let(::memoModel)
+    val briefing = visit?.takeIf { v -> a.session.briefing.isNotBlank() || v.slots.keys.any { it in POST_SLOTS } }?.let { briefingModel(it, a.session.briefing) }
+    val meeting = if (health) rendezvous(s) else null
+    val shareAction = when {
+        visit == null || a.session.briefing.isBlank() -> BriefingShareAction.NONE
+        family -> BriefingShareAction.CONFIRM
+        s.demo -> BriefingShareAction.CONNECT_DEMO
+        else -> BriefingShareAction.NONE
+    }
     return ParkedModel(
-        memo = visit?.let(::memoModel),
-        briefing = visit?.takeIf { v -> a.session.briefing.isNotBlank() || v.slots.keys.any { it in POST_SLOTS } }?.let { briefingModel(it, a.session.briefing) },
+        memo = memo,
+        briefing = briefing,
         history = if (!health) emptyList() else a.visits.sortedByDescending { it.createdAt }.groupBy { it.hospital.name }.map { (name, visits) ->
             HospitalHistory(name, visits.map { v -> HistoryEntry(v.id, visitDay(v.createdAt), memoModel(v), briefingModel(v), v.appointment?.let(::appointmentLabel), v.reminder) })
         },
-        rendezvous = if (health) rendezvous(s) else null,
+        rendezvous = meeting,
         consent = ConsentVisibility(!health, health && !family, family && visit != null),
-        demoSteps = if (s.demo) demoSteps(a.session.phase, family && a.session.briefing.isNotBlank()) else emptyList(),
+        demoSteps = if (s.demo) demoSteps(a.session.phase, shareAction != BriefingShareAction.NONE) else emptyList(),
+        completion = if (visit != null && a.session.phase == Phase.DONE && a.session.prompt == null)
+            CompletionModel(visit.appointment?.let(::appointmentLabel), if (briefing != null) "브리핑 보기" else "진료 메모 보기") else null,
+        notice = journeyNotice(s),
+        cards = buildList {
+            if (briefing != null) add(TodayCard.BRIEFING)
+            if (memo != null) add(TodayCard.MEMO)
+            if (meeting != null) add(TodayCard.RENDEZVOUS)
+        },
+        shareAction = shareAction,
     )
+}
+
+/** Step instructions expire with their step; delivery/error notices remain visible. */
+private fun journeyNotice(s: ViewState): String? {
+    val notice = s.notice.trim().takeIf { it.isNotEmpty() } ?: return null
+    if (notice.startsWith("시연: 진료 15분 경과") && s.archive.session.phase != Phase.AT_HOSPITAL) return null
+    if (notice == "시연 질문과 대답이 진행 중이에요." && s.archive.session.prompt == null) return null
+    return if (s.demo && notice in setOf("가족 화면에 전달했어요.", "가족이 잘 받았대요")) "시연 가족 · $notice" else notice
 }
 private val POST_SLOTS = setOf(Slot.DOCTOR, Slot.MED_CHANGE, Slot.APPOINTMENT, Slot.CAUTION, Slot.NEXT_CHECK)
 fun memoModel(v: Visit) = MemoModel(
@@ -168,7 +203,7 @@ fun visitDay(at: Long): String = Instant.ofEpochMilli(at).atZone(ZoneId.of("Asia
 private fun rendezvous(s: ViewState): RendezvousModel? {
     val session = s.archive.session
     return when (session.rendezvous) {
-        Rendezvous.OUTSIDE -> RendezvousModel("나왔어 · 수신", "${s.archive.settings.honorific}가 정문에서 기다려요")
+        Rendezvous.OUTSIDE -> RendezvousModel(if (s.demo) "시연 답장 · 나왔어" else "나왔어 · 수신", "${s.archive.settings.honorific}가 정문에서 기다려요")
         Rendezvous.PARKING -> RendezvousModel("주차 후 합류", "가족 화면에서 ‘나왔어’를 보내면 알려 드려요")
         Rendezvous.AT_GATE -> if (session.droppedOff) RendezvousModel("정문에서 내리셨어요", "주차 후 합류할 수 있어요") else RendezvousModel("정문 도착", "진료 메모를 챙겨 주세요")
         Rendezvous.NONE -> null
@@ -185,6 +220,12 @@ fun demoSteps(phase: Phase, canShareBriefing: Boolean = false): List<DemoStep> {
     }
     return UiCopy.DEMO_STEPS.mapIndexed { index, label -> DemoStep(label, index == current, index == current && phase != Phase.BRIEFING && (phase != Phase.DONE || canShareBriefing), index < current) }
 }
+
+/** A consent click only queues setup. Wait for the service's state before requesting readback. */
+fun shouldRequestBriefingAfterDemoConsent(s: ViewState, pendingVisitId: String?): Boolean =
+    pendingVisitId != null && s.demo && s.fullScreen && s.archive.consent.healthAt != null &&
+        s.archive.consent.familyAt != null && s.archive.session.visit?.id == pendingVisitId &&
+        s.archive.session.briefing.isNotBlank() && s.archive.session.prompt == null
 
 object SettingsInput {
     fun validBaseUrl(text: String): Boolean {

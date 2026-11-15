@@ -8,7 +8,7 @@ import java.net.HttpURLConnection
 import java.net.URI
 
 /** Only explicit narrow DTOs become HTTP JSON. No archive/utterance serializer is reachable here. */
-class HttpFamilyLink : FamilyLink {
+class HttpFamilyLink : FamilyConnection {
     private var cursor=0L
     private var lastToken=""
     private suspend fun request(settings: Settings,path: String,method: String="GET",body: JSONObject?=null): JSONObject = withContext(Dispatchers.IO) {
@@ -29,7 +29,7 @@ class HttpFamilyLink : FamilyLink {
     }
     override suspend fun send(settings: Settings,message: ApprovedMessage) { request(settings,"/api/message","POST",JSONObject().put("id",message.id).put("kind",message.kind).put("text",message.text)) }
     override suspend fun revoke(settings: Settings) { if(settings.familyToken.isNotEmpty()) request(settings,"/api/session","DELETE") }
-    suspend fun poll(settings: Settings): List<Pair<String,String>> {
+    override suspend fun poll(settings: Settings): List<Pair<String,String>> {
         if(lastToken!=settings.familyToken) {cursor=0;lastToken=settings.familyToken}
         val array=request(settings,"/api/replies?after=$cursor").getJSONArray("replies")
         return (0 until array.length()).map { val r=array.getJSONObject(it); val id=r.getString("id"); cursor=maxOf(cursor,id.toLong()); id to r.getString("text") }

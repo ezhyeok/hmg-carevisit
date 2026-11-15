@@ -15,6 +15,8 @@ sealed interface AppCommand {
         fun belongsTo(demo: Boolean): Boolean = sourceDemo == demo
     }
     data class Demo(val enabled: Boolean) : AppCommand
+    data object DemoFamilyConsent : AppCommand
+    data object DemoFamilyOutside : AppCommand
     data object Next : AppCommand
 }
 object VisitStore {

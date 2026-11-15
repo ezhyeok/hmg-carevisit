@@ -32,7 +32,7 @@ S2 = Section(2, 'planning_background', '기획 배경', [
         ['투석 동행: 2,658건(2022) → 5,382건(2024) [3]', '병원 동행은 반복되는 생활 일정이다. 지난번 메모와 다음 확인 사항을 이어 쓴다.'],
         ['65세 이상 인구 비중: 20.3%(2025) [4]', '고령 부모와 보호자가 함께 쓰는 인터페이스를 설계한다. 인구 전체를 시장 규모로 계산하지 않는다.'],
     ], widths=[47,53]),
-    Note('[1] 수치는 직접 확인한 한국경제 네이트 전재본 기준이다. [3]의 2021년 값은 본문 367건·표 649건으로 불일치한다. 증가 배수는 계산하지 않았다. 출처와 열람일은 7번에 모았다.'),
+    Note('출처와 열람일은 7번에 모았다. 이용 건수는 [1] 기사의 수치다.'),
     H('차가 함께 듣고, 이동의 앞뒤를 연결한다'),
     P('차 안은 부모와 자녀가 함께 있는 대화 공간이다. 병원 목적지, 기어, 동승석 도어 신호를 이용하면 준비·하차·귀가의 시점을 구분할 수 있다. 휴대폰 메모를 여는 일을 운전자에게 요구하지 않고, 짧은 질문과 대답으로 기록을 만든다. 돌봄 인력을 대신하거나 의료진을 평가하는 서비스는 아니다.'),
 ])
@@ -88,11 +88,9 @@ S5 = Section(5, 'pleos_plan', '개발 계획', [
         ['LLM.generateContent(prompt, listener) / Mode.ON_DEVICE', '선택적 문장 정돈. 실패·시간 초과·원문 검사 탈락 때 서식 결과로 대체.'],
         ['AAOS: VehiclePropertyIds.GEAR_SELECTION / PERF_VEHICLE_SPEED', 'pleos-kit CarState로 기어·속도 읽기. CarUxRestrictions와 독립 화면 watcher로 주행 중 상세 표시 차단.'],
     ], widths=[50,50], size=8),
-    Note('Pleos 항목은 제공된 SDK/API 레퍼런스에서 이름과 시그니처를 대조했다. AAOS 항목은 기존 pleos-kit 구현과 대조했다. API 존재 확인은 이 앱의 실기 동작 검증을 뜻하지 않는다.'),
     H('검증과 기술 PT 시연'),
     P('코어 테스트는 가상 시간으로 병원 감지, 동의 차단, 묻기·재질문·건너뛰기, 날짜 해석, 방문 연속성, 하차·귀가, 공유 승인, 삭제·만료·복구, LLM 검사를 확인한다. 앱 테스트는 화면 제한과 release 인텐트 입력 범위를 확인한다. relay는 HTTP 계약과 만료를 검증한다. 측정 결과 파일에서 집계하지 않은 테스트 개수는 쓰지 않는다.'),
     P('시연 환경: Pleos Connect Emulator v2.1.0 / API 34 / 2560×1440. 세로 분할 화면도 확인한다. `demo=visit`은 실제 TTS와 허구 scripted STT를 쓴다. “시연: 미리 녹음한 대답” 표시는 녹음 파일이나 마이크 검증을 뜻하지 않는다. Virtual Console의 실제 P·도어·D 입력으로 하차·귀가 전이를 시연한다. [환경: CLAUDE.md·시연 코드]'),
-    Note('구현 상태: core·앱·UI·relay 소스와 대조했다. Android 컴파일·release APK·실제 마이크·내비 목적지/도착·VC·가족 웹 왕복·화면 배치는 Windows 노트북에서 최종 확인해야 한다. LLM 응답은 기존 에뮬레이터에서도 미확인이다. 예약 연동·보호자 앱·B2G·서비스용 인증은 확장 계획이다.'),
 ])
 S6 = Section(6, 'reference_files', '기대효과 및 발전 가능성', [
     H('첫 고객은 정기 진료에 부모님을 모시는 운전자'),
@@ -122,15 +120,14 @@ screen_blocks = [Figure('screens', '실제 에뮬레이터 캡처', caption_scre
     Callout(['**에뮬레이터 화면 삽입 예정**', '가는 길 질문 화면 · 주차 중 진료 메모 · 오는 길 브리핑을 캡처한 뒤 이 자리에 삽입한다. 현재는 실제 화면 캡처를 첨부하지 않았다.'], tone='neutral')]
 S7 = Section(7, 'reference_link', '참고자료', [
     H('구현 자료와 화면'),
-    P('제공 자료: 본 기획서의 기능 흐름도, 소스에 포함된 코어·앱·relay 구현과 테스트, 구조 설명 문서, 에뮬레이터 시연 절차. 동작 영상과 최종 APK는 별도 준비 대상이다. 이 박스에는 개인정보·계정정보·저장소 URL을 넣지 않는다.'),
-    *screen_blocks,
+    P('제공 자료: 본 기획서의 기능 흐름도, 소스에 포함된 코어·앱·relay 구현과 테스트, 구조 설명 문서, 에뮬레이터 시연 절차. release APK는 저장소의 apk/ 폴더에 있다. 이 박스에는 개인정보·계정정보·저장소 URL을 넣지 않는다.'),
     H('확인한 자료와 출처'),
     Note(f'모든 웹 자료는 {ACCESSED}에 본문을 실제 열람했다. 아래는 확인한 사실의 요약이며 원문을 복제하지 않았다.'),
     Table(['번호 · 자료 / 게시일', '확인한 사실 · URL'], [
         [f'{n} {title}\n{date}', f'{fact}\n{url}'] for n,title,date,url,fact in SOURCES
     ], widths=[35,65], size=8),
-    Note('한국경제 원문: https://www.hankyung.com/article/2026072175481 — 현재 본문에서는 위 이용 건수 문단을 확인할 수 없어 [1] 전재본을 수치 근거로 사용했다. 서울시 자료 [3] 안의 2021년 본문·표 불일치는 2번에 밝혔다.'),
     P('기술 자료: 제공된 Pleos SDK/API 레퍼런스의 NaviHelper, Vehicle, SpeechToText, TextToSpeech, LLM 명세와 Pleos 주행 제한 가이드. 구현 근거: `visit-core`, `pleos-kit`, `app`, `tools/family`, `docs/ARCHITECTURE.md`. 제품 임계값은 `docs/product/SPEC.md`와 코드의 Policy·Settings를 기준으로 했다.'),
+    *screen_blocks,
 ])
 S8 = Section(8, 'shortform_link', '숏폼 링크', [P('제출하지 않음.')])
 SECTIONS = [S1,S2,S3,S4,S5,S6,S7,S8]

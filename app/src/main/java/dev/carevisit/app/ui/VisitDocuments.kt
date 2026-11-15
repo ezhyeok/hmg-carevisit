@@ -15,7 +15,10 @@ import androidx.compose.ui.unit.dp
 import dev.carevisit.app.VisitStore
 import dev.carevisit.core.*
 
-@Composable internal fun DocumentCards(state: ViewState, model: ParkedModel) {
+@Composable internal fun DocumentCards(
+    state: ViewState, model: ParkedModel, recordsModifier: Modifier = Modifier,
+    onShareBriefing: () -> Unit,
+) {
     if (model.memo == null) {
         VisitCard {
             SectionTitle("진료 전에 함께 준비해요")
@@ -25,31 +28,39 @@ import dev.carevisit.core.*
         return
     }
     val session = state.archive.session
-    // The return-trip briefing comes first; the doctor's memo remains available below it.
-    model.briefing?.let { briefing ->
-        VisitCard {
-            SectionTitle("진료 브리핑")
-            SupportingText("의사 선생님 말씀을 듣고 남긴 기록")
-            RecordRows(briefing.rows)
-            if (model.consent.canShare && session.briefing.isNotBlank()) {
-                VisitButton("가족에게 보내기", Modifier.fillMaxWidth(), primary = true, enabled = session.prompt == null) { UiCommands.shareBriefing() }
-                SupportingText("보낼 내용을 확인한 뒤 한 번 더 여쭤봐요.")
-            } else if (!model.consent.canShare) SupportingText("가족에게 보내려면 설정에서 별도로 동의해 주세요.")
-        }
-    }
-    MemoCard(model.memo, onCheck = { VisitStore.send(Event.Checked(it)) }) {
-        if (model.consent.canShare) VisitButton("진료 메모 보내기", Modifier.fillMaxWidth(), enabled = session.prompt == null) { VisitStore.send(Event.ShareMemo) }
-        session.visit?.hospital?.takeIf { h -> h.name != "병원" && state.archive.settings.hospitals.none { it.name == h.name } }?.let { hospital ->
-            VisitButton("정기 병원으로 저장", Modifier.fillMaxWidth()) {
-                VisitStore.send(Event.Configure(state.archive.settings.copy(hospitals = state.archive.settings.hospitals + hospital)))
+    // Both window layouts render this tested order, including the rendezvous card.
+    model.cards.forEach { card ->
+        when (card) {
+            TodayCard.BRIEFING -> VisitCard {
+                Box(recordsModifier) { SectionTitle("진료 브리핑") }
+                SupportingText("의사 선생님 말씀을 듣고 남긴 기록")
+                RecordRows(model.briefing!!.rows)
+                if (model.shareAction != BriefingShareAction.NONE) {
+                    VisitButton("가족에게 보내기", Modifier.fillMaxWidth(), primary = true,
+                        enabled = session.prompt == null, onClick = onShareBriefing)
+                    SupportingText(if (state.demo) "시연용 가족 화면에만 전해요. 보낼 내용은 한 번 더 확인해요." else "보낼 내용을 확인한 뒤 한 번 더 여쭤봐요.")
+                } else if (!model.consent.canShare) {
+                    SupportingText("가족에게 보내려면 설정에서 별도로 동의해 주세요.")
+                }
             }
+            TodayCard.MEMO -> MemoCard(model.memo,
+                modifier = if (model.briefing == null) recordsModifier else Modifier,
+                onCheck = { VisitStore.send(Event.Checked(it)) }) {
+                if (model.consent.canShare) VisitButton("진료 메모 보내기", Modifier.fillMaxWidth(), enabled = session.prompt == null) { VisitStore.send(Event.ShareMemo) }
+                session.visit?.hospital?.takeIf { h -> h.name != "병원" && state.archive.settings.hospitals.none { it.name == h.name } }?.let { hospital ->
+                    VisitButton("정기 병원으로 저장", Modifier.fillMaxWidth()) {
+                        VisitStore.send(Event.Configure(state.archive.settings.copy(hospitals = state.archive.settings.hospitals + hospital)))
+                    }
+                }
+            }
+            TodayCard.RENDEZVOUS -> RendezvousCard(model.rendezvous!!)
         }
     }
 }
 
-@Composable private fun MemoCard(model: MemoModel, onCheck: ((String) -> Unit)? = null, actions: @Composable ColumnScope.() -> Unit = {}) {
+@Composable private fun MemoCard(model: MemoModel, modifier: Modifier = Modifier, onCheck: ((String) -> Unit)? = null, actions: @Composable ColumnScope.() -> Unit = {}) {
     VisitCard {
-        SectionTitle("진료 메모")
+        Box(modifier) { SectionTitle("진료 메모") }
         SupportingText("${model.date} · ${model.hospital}")
         StatusLabel("의사 선생님께 보여 주세요")
         RecordRows(model.rows)
