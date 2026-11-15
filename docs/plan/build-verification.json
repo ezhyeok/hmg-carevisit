@@ -1,21 +1,58 @@
 {
   "date": "2026-11-15",
+  "round": "final doc-only review",
+  "source_reference": "452c8f0376333ff14812c99f7e9cdca1056b5d89",
+  "pages_libreoffice_before": 10,
   "pages_libreoffice": 10,
   "box7_heading_and_content_page_libreoffice": 6,
-  "word_rendering": "not available; manual verification required",
+  "word_rendering": "not available; identical formatting and capture size retained; every box text length unchanged or reduced",
+  "box_text_characters_before": {
+    "app_summary": 76,
+    "planning_background": 1202,
+    "vehicle_scenario": 1683,
+    "key_features": 848,
+    "pleos_plan": 2102,
+    "reference_files": 1126,
+    "reference_link": 1944,
+    "shortform_link": 8
+  },
+  "box_text_characters_after": {
+    "app_summary": 76,
+    "planning_background": 1202,
+    "vehicle_scenario": 1683,
+    "key_features": 830,
+    "pleos_plan": 2022,
+    "reference_files": 1103,
+    "reference_link": 1917,
+    "shortform_link": 8
+  },
   "template_sha256": "07be893d58b0e96ab7788f0d189d6829f0e59a2cee4bc18cb90ec37eeda2f5fd",
-  "docx_sha256": "20a9ed72e0c08311f061141a228b11ddc1f7ceb494517291102728d5de3da41c",
-  "boxes": 8,
-  "xml": "all parts parse; check_layout.py passed",
+  "docx_sha256": "f83e215328249697ae15846e1e845c968218cd5b01d1c253661e138722ab2bde",
   "consent_section": "part03 XML unchanged from template",
   "screenshots": 4,
   "screenshots_unchanged_from_head": true,
-  "screenshot_height_cm": 6.6,
+  "screenshot_height_cm": 5.2,
   "figures": 2,
+  "video_segments_unchanged_except_captions": 13,
+  "video_duration_seconds": 155,
+  "apk_sha256": "75f825691d12f2c2396fe7c6b4bd5c667591b61ff814af7ae81b7d4b840edef4",
+  "apk_bytes_unchanged": true,
+  "mp4_bytes_unchanged": true,
+  "existing_jvm_xml": {
+    "test": {
+      "tests": 99,
+      "failures": 0,
+      "errors": 0,
+      "skipped": 0
+    },
+    "adapterTest": {
+      "tests": 31,
+      "failures": 0,
+      "errors": 0,
+      "skipped": 0
+    }
+  },
+  "tests_rerun": false,
   "new_verified_sources_this_round": 0,
-  "existing_verified_sources": 6,
-  "video_file_present": true,
-  "video_caption_segments_unchanged_timing": 11,
-  "laptop_unittest_passed": 12,
-  "runtime_tests_run_by_doc": false
+  "checks": "layout, labels, required README fields, XML, scope, media hashes, caption fields, diff whitespace passed"
 }
